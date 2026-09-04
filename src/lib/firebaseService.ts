@@ -58,6 +58,7 @@ export const COLLECTIONS = {
 
 // Items
 export async function syncItemToCloud(item: InventoryItem): Promise<void> {
+  if (!db) return;
   try {
     const itemRef = doc(db, COLLECTIONS.ITEMS, item.id);
     await setDoc(itemRef, cleanFirestoreData(item as unknown as Record<string, unknown>), { merge: true });
@@ -67,6 +68,7 @@ export async function syncItemToCloud(item: InventoryItem): Promise<void> {
 }
 
 export async function deleteItemFromCloud(itemId: string): Promise<void> {
+  if (!db) return;
   try {
     const itemRef = doc(db, COLLECTIONS.ITEMS, itemId);
     await deleteDoc(itemRef);
@@ -76,6 +78,7 @@ export async function deleteItemFromCloud(itemId: string): Promise<void> {
 }
 
 export async function syncAllItemsToCloud(items: InventoryItem[]): Promise<void> {
+  if (!db) return;
   try {
     const chunks = [];
     for (let i = 0; i < items.length; i += 400) {
@@ -96,6 +99,7 @@ export async function syncAllItemsToCloud(items: InventoryItem[]): Promise<void>
 
 // Sales
 export async function syncSaleToCloud(sale: SaleRecord): Promise<void> {
+  if (!db) return;
   try {
     const saleRef = doc(db, COLLECTIONS.SALES, sale.id);
     await setDoc(saleRef, cleanFirestoreData(sale as unknown as Record<string, unknown>), { merge: true });
@@ -106,6 +110,7 @@ export async function syncSaleToCloud(sale: SaleRecord): Promise<void> {
 
 // Expenses
 export async function syncExpenseToCloud(expense: ExpenseRecord): Promise<void> {
+  if (!db) return;
   try {
     const expRef = doc(db, COLLECTIONS.EXPENSES, expense.id);
     await setDoc(expRef, cleanFirestoreData(expense as unknown as Record<string, unknown>), { merge: true });
@@ -116,6 +121,7 @@ export async function syncExpenseToCloud(expense: ExpenseRecord): Promise<void> 
 
 // Movements
 export async function syncMovementToCloud(movement: StockMovement): Promise<void> {
+  if (!db) return;
   try {
     const movRef = doc(db, COLLECTIONS.MOVEMENTS, movement.id);
     await setDoc(movRef, cleanFirestoreData(movement as unknown as Record<string, unknown>), { merge: true });
@@ -126,6 +132,7 @@ export async function syncMovementToCloud(movement: StockMovement): Promise<void
 
 // Activity Logs
 export async function syncLogToCloud(logItem: ActivityLog): Promise<void> {
+  if (!db) return;
   try {
     const logRef = doc(db, COLLECTIONS.LOGS, logItem.id);
     await setDoc(logRef, cleanFirestoreData(logItem as unknown as Record<string, unknown>), { merge: true });
@@ -136,6 +143,7 @@ export async function syncLogToCloud(logItem: ActivityLog): Promise<void> {
 
 // Users
 export async function syncUserToCloud(user: User): Promise<void> {
+  if (!db) return;
   try {
     const userRef = doc(db, COLLECTIONS.USERS, user.id);
     await setDoc(userRef, cleanFirestoreData(user as unknown as Record<string, unknown>), { merge: true });
@@ -145,6 +153,7 @@ export async function syncUserToCloud(user: User): Promise<void> {
 }
 
 export async function deleteUserFromCloud(userId: string): Promise<void> {
+  if (!db) return;
   try {
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     await deleteDoc(userRef);
@@ -155,6 +164,7 @@ export async function deleteUserFromCloud(userId: string): Promise<void> {
 
 // Store Settings
 export async function syncSettingsToCloud(settings: StoreSettings): Promise<void> {
+  if (!db) return;
   try {
     const settingsRef = doc(db, COLLECTIONS.SETTINGS, 'store_config');
     await setDoc(settingsRef, cleanFirestoreData(settings as unknown as Record<string, unknown>), { merge: true });
@@ -173,6 +183,7 @@ export async function fetchCloudData(): Promise<{
   logs: ActivityLog[];
   settings: StoreSettings | null;
 } | null> {
+  if (!db) return null;
   try {
     const itemsSnap = await getDocs(collection(db, COLLECTIONS.ITEMS));
     const items = itemsSnap.docs.map(d => d.data() as InventoryItem);
@@ -212,6 +223,7 @@ export async function fetchCloudData(): Promise<{
 
 // Listeners for live sync across terminals
 export function subscribeToLiveCloudItems(onUpdate: (items: InventoryItem[]) => void): () => void {
+  if (!db) return () => {};
   try {
     return onSnapshot(collection(db, COLLECTIONS.ITEMS), (snapshot) => {
       const items = snapshot.docs.map(d => d.data() as InventoryItem);
@@ -227,6 +239,7 @@ export function subscribeToLiveCloudItems(onUpdate: (items: InventoryItem[]) => 
 }
 
 export function subscribeToLiveCloudSales(onUpdate: (sales: SaleRecord[]) => void): () => void {
+  if (!db) return () => {};
   try {
     return onSnapshot(collection(db, COLLECTIONS.SALES), (snapshot) => {
       const sales = snapshot.docs.map(d => d.data() as SaleRecord);
@@ -242,6 +255,7 @@ export function subscribeToLiveCloudSales(onUpdate: (sales: SaleRecord[]) => voi
 }
 
 export function subscribeToLiveCloudUsers(onUpdate: (users: User[]) => void): () => void {
+  if (!db) return () => {};
   try {
     return onSnapshot(collection(db, COLLECTIONS.USERS), (snapshot) => {
       const users = snapshot.docs.map(d => d.data() as User);

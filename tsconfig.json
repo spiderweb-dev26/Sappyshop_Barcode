@@ -21,6 +21,10 @@
         "./*"
       ]
     },
+    "types": [
+      "vite/client",
+      "node"
+    ],
     "allowImportingTsExtensions": true,
     "noEmit": true
   }

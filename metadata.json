@@ -1,0 +1,6 @@
+{
+  "name": "Sappy Stationary - POS & Inventory System",
+  "description": "Complete point-of-sale, stock tracking, barcode labeling, and inventory management system customized for Sappy Stationary with full reset and year-end rollover capabilities.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

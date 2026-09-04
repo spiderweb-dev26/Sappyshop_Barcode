@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-emerald-main: #064e3b;
+    --color-emerald-deep: #043b2c;
+    --color-emerald-accent: #10b981;
+    --color-beige-canvas: #f5f1e8;
+    --color-beige-surface: #fdfbf7;
+    --color-beige-card: #f8f4ec;
+    --color-beige-muted: #eee7db;
+    --color-beige-border: #dfd7c7;
+  }
+
+  body {
+    background-color: #f5f1e8;
+    color: #26201b;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Smooth sleek scrollbars with warm emerald styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #ede6d8;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd8cf;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #059669;
+  }
+}
+
+/* ==========================================================================
+   PRINT ONLY LABELS & RECEIPTS - HIDE ALL UI CHROME
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 5mm;
+    size: auto;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Universal print hidden elements */
+  header,
+  nav,
+  aside,
+  button,
+  input,
+  select,
+  .no-print,
+  .print-hidden,
+  .print\\:hidden,
+  #toast-container,
+  [role="dialog"]:not(.printable-modal) {
+    display: none !important;
+  }
+
+  /* Reset main layout wrappers */
+  main, div:has(> #printable-label-sheet), div:has(> #printable-receipt-area) {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* When printing Barcode Label Sheet */
+  #printable-label-sheet {
+    display: grid !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  .barcode-label-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Layout variations in print */
+  #printable-label-sheet.layout-sheet-30 {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 2.5mm !important;
+  }
+
+  #printable-label-sheet.layout-sheet-24 {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 3mm !important;
+  }
+
+  #printable-label-sheet.layout-sheet-40 {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 2mm !important;
+  }
+
+  #printable-label-sheet.layout-sheet-80 {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.5mm !important;
+  }
+
+  #printable-label-sheet.layout-sheet-80 .barcode-label-card {
+    padding: 1mm !important;
+    font-size: 7px !important;
+  }
+
+  #printable-label-sheet.layout-sheet-14 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 4mm !important;
+  }
+
+  #printable-label-sheet.layout-sheet-8 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5mm !important;
+  }
+
+  #printable-label-sheet.layout-shelf-tag {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5mm !important;
+  }
+
+  #printable-label-sheet.layout-shelf-tag .barcode-label-card {
+    border: 2px solid #0f172a !important;
+    padding: 4mm !important;
+  }
+
+  #printable-label-sheet.layout-shelf-talker {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6mm !important;
+  }
+
+  #printable-label-sheet.layout-shelf-talker .barcode-label-card {
+    border: 2px solid #dc2626 !important;
+    padding: 5mm !important;
+  }
+
+  #printable-label-sheet.layout-single,
+  #printable-label-sheet.layout-single-wide,
+  #printable-label-sheet.layout-single-mini,
+  #printable-label-sheet.layout-jewelry-tag {
+    display: block !important;
+  }
+
+  #printable-label-sheet.layout-single .barcode-label-card {
+    width: 50mm !important;
+    height: 30mm !important;
+    margin: 0 auto 5mm auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    border: 1px dashed #cbd5e1 !important;
+    padding: 2mm !important;
+  }
+
+  #printable-label-sheet.layout-single-wide .barcode-label-card {
+    width: 60mm !important;
+    height: 40mm !important;
+    margin: 0 auto 5mm auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    border: 1px dashed #cbd5e1 !important;
+    padding: 3mm !important;
+  }
+
+  #printable-label-sheet.layout-single-mini .barcode-label-card {
+    width: 30mm !important;
+    height: 20mm !important;
+    margin: 0 auto 3mm auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    border: 1px dashed #cbd5e1 !important;
+    padding: 1.5mm !important;
+  }
+
+  #printable-label-sheet.layout-jewelry-tag .barcode-label-card {
+    width: 60mm !important;
+    height: 22mm !important;
+    margin: 0 auto 4mm auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    border: 1px dashed #cbd5e1 !important;
+    padding: 1.5mm !important;
+  }
+
+  /* When printing POS Receipts */
+  #printable-receipt-area {
+    display: block !important;
+    width: 78mm !important;
+    max-width: 78mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}

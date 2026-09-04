@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Sappy Circular Emblem -->
+  <circle cx="50" cy="50" r="44" stroke="#284228" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Central Dot -->
+  <circle cx="50" cy="26" r="3.6" fill="#284228"/>
+  <!-- Stylized V / Pen Tip lines -->
+  <path d="M 33 10.5 L 49.5 93.8 L 67 10.5" stroke="#284228" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- S-Curve ribbon and loops -->
+  <path d="M 12 36.5 C 12 18 36 10 50 10 C 68 10 88 22 88 43.5 C 88 56 78 66 65 66 C 44 66 22 47 22 36 C 22 25 36 17 50 17" stroke="#284228" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right tail loop -->
+  <path d="M 68 43.5 C 78 50 78 64 68 70 C 60 74 54 68 53.5 61" stroke="#284228" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

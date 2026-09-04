@@ -9,7 +9,9 @@ import {
   UserCheck,
   ShoppingBag,
   ArrowRight,
-  LogOut
+  LogOut,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import { UserPinModal } from './UserPinModal';
 import { SappyLogoMark } from './SappyLogo';
@@ -33,7 +35,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveTab,
     setIsScannerModalOpen,
     handleBarcodeScanned,
-    logoutUser
+    logoutUser,
+    cloudSyncStatus,
+    syncToCloudNow
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,6 +216,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {cartItemCount}
                 </span>
               )}
+            </button>
+
+            {/* Cloud Firestore Status & Quick Sync Pill */}
+            <button
+              type="button"
+              onClick={() => syncToCloudNow()}
+              disabled={cloudSyncStatus === 'syncing'}
+              className="hidden lg:flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 border border-[#dfd7c7] px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition-colors"
+              title={`Firestore Database: ${cloudSyncStatus}. Click to manually sync now.`}
+            >
+              {cloudSyncStatus === 'syncing' ? (
+                <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+              ) : (
+                <Cloud className="w-3.5 h-3.5 text-emerald-700" />
+              )}
+              <span className="hidden xl:inline text-[11px] font-bold text-slate-800">
+                {cloudSyncStatus === 'synced' ? 'Cloud Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : 'Live Firestore'}
+              </span>
+              <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse`} />
             </button>
 
             {/* Fiscal Year Status (Desktop) */}

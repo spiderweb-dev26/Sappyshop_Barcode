@@ -28,6 +28,22 @@ import {
 import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { generateAutoSku, generateAutoBarcode } from '../utils/skuBarcodeUtils';
+import { 
+  syncItemToCloud, 
+  deleteItemFromCloud, 
+  syncAllItemsToCloud, 
+  syncSaleToCloud, 
+  syncExpenseToCloud, 
+  syncMovementToCloud, 
+  syncLogToCloud, 
+  syncUserToCloud, 
+  deleteUserFromCloud, 
+  syncSettingsToCloud, 
+  fetchCloudData, 
+  subscribeToLiveCloudItems, 
+  subscribeToLiveCloudSales, 
+  subscribeToLiveCloudUsers 
+} from '../lib/firebaseService';
 
 interface ToastNotification {
   id: string;
@@ -142,6 +158,10 @@ interface AppContextType {
   settleCustomerCredit: (saleId: string, paymentMethod: PaymentMethod, amountSettled?: number) => boolean;
   exportDatabaseJson: () => void;
   importDatabaseJson: (jsonData: string) => boolean;
+
+  // Cloud Database (Firestore) Sync
+  cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'error';
+  syncToCloudNow: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -306,6 +326,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  // Toast Helper
+  const addToast = useCallback((type: ToastNotification['type'], title: string, message?: string) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    setToasts(prev => [...prev.slice(-4), { id, type, title, message, timestamp: Date.now() }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4500);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
   const [pendingDuplicateScan, setPendingDuplicateScan] = useState<{ item: InventoryItem; currentQuantity: number } | null>(null);
@@ -322,6 +356,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const verifyMasterPasscode = useCallback((code: string): boolean => {
     return code.trim() === MASTER_PASSCODE;
   }, []);
+
+  // Cloud Database (Firestore) State
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('syncing');
+  const isInitialSyncDone = useRef(false);
+
+  // Firestore Cloud Database Initialization & Real-Time Sync
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initFirestore() {
+      setCloudSyncStatus('syncing');
+      try {
+        const cloudData = await fetchCloudData();
+        if (!isMounted) return;
+
+        if (cloudData) {
+          if (cloudData.items.length === 0 && items.length > 0) {
+            // First time running with Firestore: seed existing local items & config to cloud!
+            console.log('Seeding store items and configuration to Firebase Firestore...');
+            await syncAllItemsToCloud(items);
+            if (settings) await syncSettingsToCloud(settings);
+            for (const u of users) {
+              await syncUserToCloud(u);
+            }
+            if (isMounted) setCloudSyncStatus('synced');
+          } else if (cloudData.items.length > 0) {
+            // Cloud has data! Load directly from Firestore
+            setItems(cloudData.items);
+            if (cloudData.sales.length > 0) setSales(cloudData.sales);
+            if (cloudData.users.length > 0) setUsers(cloudData.users);
+            if (cloudData.settings) setSettings(prev => ({ ...prev, ...cloudData.settings }));
+            if (cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
+            if (cloudData.movements.length > 0) setMovements(cloudData.movements);
+            if (cloudData.logs.length > 0) setLogs(cloudData.logs);
+            if (isMounted) setCloudSyncStatus('synced');
+          } else {
+            if (isMounted) setCloudSyncStatus('synced');
+          }
+          isInitialSyncDone.current = true;
+        } else {
+          if (isMounted) setCloudSyncStatus('offline');
+        }
+      } catch (err) {
+        console.warn('Firestore initial sync error:', err);
+        if (isMounted) setCloudSyncStatus('offline');
+      }
+    }
+
+    initFirestore();
+
+    // Setup live real-time listeners across active POS terminals
+    const unsubItems = subscribeToLiveCloudItems((cloudItems) => {
+      if (isMounted && isInitialSyncDone.current && cloudItems && cloudItems.length > 0) {
+        setItems(cloudItems);
+      }
+    });
+
+    const unsubSales = subscribeToLiveCloudSales((cloudSales) => {
+      if (isMounted && isInitialSyncDone.current && cloudSales && cloudSales.length > 0) {
+        setSales(cloudSales);
+      }
+    });
+
+    const unsubUsers = subscribeToLiveCloudUsers((cloudUsers) => {
+      if (isMounted && isInitialSyncDone.current && cloudUsers && cloudUsers.length > 0) {
+        setUsers(cloudUsers);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubItems();
+      unsubSales();
+      unsubUsers();
+    };
+  }, []);
+
+  const syncToCloudNow = useCallback(async () => {
+    setCloudSyncStatus('syncing');
+    try {
+      await syncAllItemsToCloud(items);
+      for (const u of users) await syncUserToCloud(u);
+      for (const s of sales.slice(0, 50)) await syncSaleToCloud(s);
+      for (const e of expenses.slice(0, 50)) await syncExpenseToCloud(e);
+      if (settings) await syncSettingsToCloud(settings);
+      setCloudSyncStatus('synced');
+      addToast('success', 'Cloud Synchronized', 'All items, sales, and settings saved to Firestore.');
+    } catch (err) {
+      setCloudSyncStatus('error');
+      addToast('error', 'Cloud Sync Failed', 'Please check your connection and try again.');
+    }
+  }, [items, users, sales, expenses, settings, addToast]);
 
   // Persistence side effects
   useEffect(() => {
@@ -377,19 +503,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, isAuthenticated ? 'true' : 'false');
     } catch { /* ignore */ }
   }, [isAuthenticated]);
-
-  // Toast Helper
-  const addToast = useCallback((type: ToastNotification['type'], title: string, message?: string) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
-    setToasts(prev => [...prev.slice(-4), { id, type, title, message, timestamp: Date.now() }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4500);
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
 
   // Activity Logger
   const logActivity = useCallback((
@@ -589,6 +702,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setUsers(prev => [...prev, newUser]);
+    syncUserToCloud(newUser);
 
     if (!requiresApproval) {
       // Auto-approved Administrator session
@@ -640,6 +754,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+    syncUserToCloud(updatedUser);
     logActivity(
       'ROLE_CHANGED', 
       'USER', 
@@ -655,16 +770,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = users.find(u => u.id === userId);
     if (!target) return false;
 
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          active: false,
-          approvalStatus: 'REJECTED'
-        };
-      }
-      return u;
-    }));
+    const rejectedUser: User = {
+      ...target,
+      active: false,
+      approvalStatus: 'REJECTED'
+    };
+
+    setUsers(prev => prev.map(u => (u.id === userId ? rejectedUser : u)));
+    syncUserToCloud(rejectedUser);
 
     logActivity(
       'ROLE_CHANGED', 
@@ -703,17 +816,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastLogin: undefined,
     };
     setUsers(prev => [...prev, newUser]);
+    syncUserToCloud(newUser);
     logActivity('USER_CREATED', 'USER', newUser.id, `Created staff account for ${newUser.name} with role ${newUser.role} [Status: ${status}]`);
     addToast('success', status === 'APPROVED' ? 'Staff Account Created' : 'Staff Registration Pending', `${newUser.name} has been added as ${newUser.role}`);
   }, [currentUser, logActivity, addToast]);
 
   const updateUserRole = useCallback((userId: string, newRole: UserRole) => {
+    let updatedUser: User | null = null;
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        return { ...u, role: newRole };
+        updatedUser = { ...u, role: newRole };
+        return updatedUser;
       }
       return u;
     }));
+    if (updatedUser) syncUserToCloud(updatedUser);
     if (currentUser.id === userId) {
       setCurrentUser(prev => ({ ...prev, role: newRole }));
     }
@@ -726,24 +843,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast('warning', 'Action Forbidden', 'You cannot deactivate your own active account.');
       return;
     }
+    let updatedUser: User | null = null;
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
         const nextState = !u.active;
+        updatedUser = { ...u, active: nextState };
         logActivity('ROLE_CHANGED', 'USER', userId, `User ${u.name} was ${nextState ? 'activated' : 'deactivated'}`);
-        return { ...u, active: nextState };
+        return updatedUser;
       }
       return u;
     }));
+    if (updatedUser) syncUserToCloud(updatedUser);
     addToast('info', 'User Status Updated');
   }, [currentUser.id, logActivity, addToast]);
 
   const updateUserPin = useCallback((userId: string, newPin: string) => {
+    let updatedUser: User | null = null;
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        return { ...u, pin: newPin };
+        updatedUser = { ...u, pin: newPin };
+        return updatedUser;
       }
       return u;
     }));
+    if (updatedUser) syncUserToCloud(updatedUser);
     addToast('success', 'PIN Updated', 'User access PIN has been reset successfully.');
   }, [addToast]);
 
@@ -755,6 +878,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = users.find(u => u.id === userId);
     if (!target) return false;
     setUsers(prev => prev.filter(u => u.id !== userId));
+    deleteUserFromCloud(userId);
     logActivity('ROLE_CHANGED', 'USER', userId, `Deleted user account: ${target.name} (${target.role})`);
     addToast('info', 'User Removed', `Account for ${target.name} was deleted.`);
     return true;
@@ -770,6 +894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setItems(prev => [newItem, ...prev]);
+    syncItemToCloud(newItem);
 
     // Record initial movement
     if (newItem.stock > 0) {
@@ -788,6 +913,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timestamp: new Date().toISOString(),
       };
       setMovements(prev => [movement, ...prev]);
+      syncMovementToCloud(movement);
     }
 
     logActivity('ITEM_CREATED', 'ITEM', newItem.id, `Cataloged new item: ${newItem.name} (SKU: ${newItem.sku}, Stock: ${newItem.stock})`);
@@ -803,6 +929,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...updates,
           updatedAt: new Date().toISOString()
         };
+        syncItemToCloud(updated);
         logActivity('ITEM_UPDATED', 'ITEM', itemId, `Updated item details for ${item.name}`);
         return updated;
       }
@@ -818,6 +945,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setItems(prev => prev.filter(i => i.id !== itemId));
     // Remove from cart if present
     setCart(prev => prev.filter(c => c.item.id !== itemId));
+    deleteItemFromCloud(itemId);
 
     logActivity('ITEM_DELETED', 'ITEM', itemId, `Deleted item: ${itemToDelete.name} (${itemToDelete.sku})`);
     addToast('warning', 'Item Deleted', `${itemToDelete.name} was removed from the catalog.`);
@@ -835,8 +963,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const previousStock = item.stock;
     const newStock = Math.max(0, previousStock + quantityChange);
+    const updatedItem = { ...item, stock: newStock, updatedAt: new Date().toISOString() };
 
-    setItems(prev => prev.map(i => i.id === itemId ? { ...i, stock: newStock, updatedAt: new Date().toISOString() } : i));
+    setItems(prev => prev.map(i => i.id === itemId ? updatedItem : i));
+    syncItemToCloud(updatedItem);
 
     const movement: StockMovement = {
       id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
@@ -854,6 +984,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setMovements(prev => [movement, ...prev]);
+    syncMovementToCloud(movement);
     logActivity('STOCK_ADJUSTED', 'ITEM', itemId, `Adjusted stock for ${item.name}: ${previousStock} -> ${newStock} (${quantityChange > 0 ? '+' : ''}${quantityChange}, ${type})`);
 
     if (newStock <= item.minStockAlert && settings.enableSoundEffects) {
@@ -904,6 +1035,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return Array.from(map.values());
       });
     }
+
+    syncAllItemsToCloud(sanitized);
 
     logActivity('BULK_IMPORT', 'SYSTEM', undefined, `Imported ${sanitized.length} items via batch import (${mode} mode).`);
     addToast('success', 'Import Successful', `Successfully imported ${sanitized.length} items into inventory.`);
@@ -1057,6 +1190,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSales(prev => [saleRecord, ...prev]);
     setCart([]);
 
+    // Sync sale, movements, and affected items to Firestore
+    syncSaleToCloud(saleRecord);
+    newMovements.forEach(m => syncMovementToCloud(m));
+
     if (settings.enableSoundEffects) soundEffects.playCheckoutSuccess();
     logActivity('SALE_CREATED', 'SALE', invoiceNo, `Completed sale ${invoiceNo} (${formatCurrency(grandTotal, settings.currencySymbol)}, ${paymentMethod})`);
     addToast('success', 'Sale Completed!', `Invoice ${invoiceNo} recorded successfully.`);
@@ -1078,6 +1215,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const saleItem = sale.items.find(si => si.itemId === item.id);
         if (saleItem) {
           const newStock = item.stock + saleItem.quantity;
+          const updatedItem = { ...item, stock: newStock, updatedAt: new Date().toISOString() };
+          syncItemToCloud(updatedItem);
           refundMovements.push({
             id: `mov-ref-${Date.now()}-${item.id}`,
             itemId: item.id,
@@ -1093,14 +1232,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             performedByName: currentUser.name,
             timestamp: new Date().toISOString()
           });
-          return { ...item, stock: newStock, updatedAt: new Date().toISOString() };
+          return updatedItem;
         }
         return item;
       });
     });
 
     setMovements(prev => [...refundMovements, ...prev]);
-    setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'REFUNDED', notes: s.notes ? `${s.notes} | Refunded: ${reason}` : `Refunded: ${reason}` } : s));
+    const updatedSale: SaleRecord = { 
+      ...sale, 
+      status: 'REFUNDED', 
+      notes: sale.notes ? `${sale.notes} | Refunded: ${reason}` : `Refunded: ${reason}` 
+    };
+    setSales(prev => prev.map(s => s.id === saleId ? updatedSale : s));
+    syncSaleToCloud(updatedSale);
+    refundMovements.forEach(m => syncMovementToCloud(m));
 
     logActivity('SALE_REFUNDED', 'SALE', sale.invoiceNo, `Refunded sale ${sale.invoiceNo} (Amount: ${formatCurrency(sale.grandTotal, settings.currencySymbol)}, Reason: ${reason})`);
     addToast('warning', 'Sale Refunded', `Invoice ${sale.invoiceNo} items returned to inventory.`);
@@ -1128,6 +1274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setExpenses(prev => [newExpense, ...prev]);
+    syncExpenseToCloud(newExpense);
     logActivity('EXPENSE_CREATED', 'EXPENSE', expenseNo, `Recorded ${newExpense.category} expense: ${formatCurrency(newExpense.amount, settings.currencySymbol)} to ${newExpense.payee}`);
     addToast('success', 'Expense Recorded', `${expenseData.title} (${formatCurrency(expenseData.amount, settings.currencySymbol)}) recorded.`);
     return newExpense;
@@ -1253,6 +1400,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSettings = useCallback((newSettings: Partial<StoreSettings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...newSettings };
+      syncSettingsToCloud(updated);
       logActivity('SETTINGS_UPDATED', 'SYSTEM', undefined, 'Store configuration updated');
       return updated;
     });
@@ -1285,6 +1433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setSales(prev => prev.map(s => s.id === saleId ? updatedSale : s));
+    syncSaleToCloud(updatedSale);
     logActivity(
       'CREDIT_SETTLED',
       'SALE',
@@ -1505,7 +1654,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         yearEndReset,
         settleCustomerCredit,
         exportDatabaseJson,
-        importDatabaseJson
+        importDatabaseJson,
+        cloudSyncStatus,
+        syncToCloudNow
       }}
     >
       {children}

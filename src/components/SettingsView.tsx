@@ -15,7 +15,10 @@ import {
   DollarSign,
   Lock,
   KeyRound,
-  ShieldCheck
+  ShieldCheck,
+  Cloud,
+  RefreshCw,
+  CheckCircle2
 } from 'lucide-react';
 import { MASTER_PASSCODE } from '../types';
 
@@ -32,7 +35,9 @@ export const SettingsView: React.FC = () => {
     yearEndReset,
     hasPermission, 
     addToast,
-    requestMasterAuth 
+    requestMasterAuth,
+    cloudSyncStatus,
+    syncToCloudNow 
   } = useApp();
 
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
@@ -209,6 +214,57 @@ export const SettingsView: React.FC = () => {
               <li>Staff User Creation, Role Assignments & PIN Resets</li>
               <li>Sales History Invoices Refund Issuance</li>
             </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Cloud Firestore Database Sync (100% Free Google Cloud Spark Plan) */}
+      <div className="bg-white p-4 rounded-lg border border-emerald-200/80 shadow-sm space-y-3">
+        <div className="flex items-center justify-between pb-2.5 border-b border-emerald-100">
+          <div className="flex items-center gap-2">
+            <Cloud className="w-4 h-4 text-emerald-800" />
+            <div>
+              <h2 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Cloud Database (Google Firestore)</h2>
+              <p className="text-[11px] text-slate-500">Persistent, zero-cost cloud storage for items, transactions, and staff accounts.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className={`w-2 h-2 rounded-full ${cloudSyncStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse`} />
+              {cloudSyncStatus === 'synced' ? 'Online & Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : 'Connected'}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="p-3 rounded-md bg-[#fdfbf7] border border-[#dfd7c7] space-y-1">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cloud Tier</span>
+            <p className="text-sm font-bold text-emerald-900">100% Free Forever</p>
+            <p className="text-[11px] text-slate-600">Google Cloud Spark Plan with 50,000 free daily reads and 20,000 writes.</p>
+          </div>
+
+          <div className="p-3 rounded-md bg-[#fdfbf7] border border-[#dfd7c7] space-y-1">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Live Synced Entities</span>
+            <p className="text-sm font-bold text-slate-900">
+              {items.length} Items • {sales.length} Sales • {users.length} Users
+            </p>
+            <p className="text-[11px] text-slate-600">Instant cross-terminal synchronization via real-time WebSocket listeners.</p>
+          </div>
+
+          <div className="p-3 rounded-md bg-[#fdfbf7] border border-[#dfd7c7] flex flex-col justify-between space-y-2">
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Manual Force Sync</span>
+              <p className="text-[11px] text-slate-600">Push all local inventory and transactions to Firestore now.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => syncToCloudNow()}
+              disabled={cloudSyncStatus === 'syncing'}
+              className="w-full h-8 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${cloudSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+              <span>{cloudSyncStatus === 'syncing' ? 'Syncing State...' : 'Sync All To Cloud Now'}</span>
+            </button>
           </div>
         </div>
       </div>

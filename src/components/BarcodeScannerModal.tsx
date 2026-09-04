@@ -119,8 +119,8 @@ export const BarcodeScannerModal: React.FC = () => {
   const handleGoToCheckout = () => {
     stopCamera();
     setIsScannerModalOpen(false);
-    setActiveTab('pos');
-    addToast('success', 'Ready for Checkout', `${cartTotalUnits} item${cartTotalUnits !== 1 ? 's' : ''} loaded into POS.`);
+    setActiveTab('checkout');
+    addToast('success', 'Proceeding to Checkout', `${cartTotalUnits} item${cartTotalUnits !== 1 ? 's' : ''} loaded into Checkout.`);
   };
 
   // Haptic feedback trigger for mobile devices
@@ -473,8 +473,8 @@ export const BarcodeScannerModal: React.FC = () => {
   if (!isScannerModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         
         {/* Header */}
         <div className="p-3.5 sm:p-4 bg-slate-950/70 border-b border-slate-800 flex items-center justify-between">

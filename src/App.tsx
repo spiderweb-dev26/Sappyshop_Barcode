@@ -18,6 +18,7 @@ import { ReportsCenter } from './components/ReportsCenter';
 import { UserRoleManager } from './components/UserRoleManager';
 import { AuditLogViewer } from './components/AuditLogViewer';
 import { SettingsView } from './components/SettingsView';
+import { CheckoutPage } from './components/CheckoutPage';
 import { AuthAnimationPage } from './components/AuthAnimationPage';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { DuplicateScanModal } from './components/DuplicateScanModal';
@@ -48,6 +49,8 @@ const MainLayout: React.FC = () => {
         return <InventoryList />;
       case 'pos':
         return <POSRegister />;
+      case 'checkout':
+        return <CheckoutPage />;
       case 'labels':
         return <BarcodeLabelGenerator />;
       case 'sales':
@@ -86,7 +89,7 @@ const MainLayout: React.FC = () => {
 
         {/* Dynamic Content Main Area */}
         <main className="flex-1 overflow-y-auto min-h-0 w-full bg-[#f5f1e8] p-3 sm:p-5 lg:p-6 print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
-          <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0 pb-20 lg:pb-6">
+          <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0 pb-28 lg:pb-8">
             {renderActiveView()}
           </div>
         </main>

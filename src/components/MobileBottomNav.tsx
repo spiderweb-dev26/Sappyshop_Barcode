@@ -34,8 +34,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fdfbf7]/95 backdrop-blur-md border-t border-[#dfd7c7] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-1.5 flex items-center justify-around print:hidden"
     >
       {navItems.map(({ tab, label, icon: Icon }) => {
-        const isActive = activeTab === tab;
+        const isActive = activeTab === tab || (tab === 'pos' && activeTab === 'checkout');
         const isPos = tab === 'pos';
+        const displayLabel = (tab === 'pos' && activeTab === 'checkout') ? 'Checkout' : label;
 
         return (
           <button
@@ -57,7 +58,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               )}
             </div>
             <span className={`text-[10px] tracking-tight mt-0.5 ${isActive ? 'font-bold text-[#064e3b]' : 'font-medium'}`}>
-              {label}
+              {displayLabel}
             </span>
             {isActive && (
               <span className="w-1.5 h-1.5 rounded-full bg-[#064e3b] mt-0.5" />

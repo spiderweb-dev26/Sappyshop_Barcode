@@ -57,6 +57,7 @@ export type NavigationTab =
   | 'dashboard' 
   | 'inventory' 
   | 'pos' 
+  | 'checkout'
   | 'sales' 
   | 'credit'
   | 'expenses' 
@@ -1313,11 +1314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (matchedItem) {
-      if (activeTab === 'pos') {
+      if (activeTab === 'pos' || activeTab === 'checkout') {
         // Check if item is already in cart
         const existingInCart = cart.find(c => c.item.id === matchedItem.id);
         if (existingInCart && !skipDuplicateCheck) {
-          // Duplicate scanned in POS: ask for confirmation!
+          // Duplicate scanned in POS/Checkout: ask for confirmation!
           setPendingDuplicateScan({ item: matchedItem, currentQuantity: existingInCart.quantity });
           if (settings.enableSoundEffects) soundEffects.playWarning();
           return true;

@@ -22,7 +22,8 @@ import {
   Receipt as ReceiptIcon,
   Tag,
   Sparkles,
-  Check
+  Check,
+  ArrowRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -51,9 +52,11 @@ export const POSRegister: React.FC = () => {
     settings, 
     setIsScannerModalOpen,
     currentUser,
-    handleBarcodeScanned 
+    handleBarcodeScanned,
+    setActiveTab
   } = useApp();
 
+  const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState('ALL');
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -101,8 +104,7 @@ export const POSRegister: React.FC = () => {
 
   const handleOpenCheckout = () => {
     if (cart.length === 0) return;
-    setAmountPaidInput(grandTotal.toFixed(2));
-    setIsCheckoutOpen(true);
+    setActiveTab('checkout');
   };
 
   const handleExecuteCheckout = (e: React.FormEvent) => {
@@ -224,10 +226,43 @@ export const POSRegister: React.FC = () => {
         </div>
       </div>
 
+      {/* Mobile View Toggle: Catalog vs Cart */}
+      <div className="lg:hidden flex items-center bg-white p-1 rounded-xl border border-emerald-100 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setMobileTab('catalog')}
+          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'catalog'
+              ? 'bg-[#064e3b] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>Catalog ({filteredItems.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('cart')}
+          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'cart'
+              ? 'bg-[#064e3b] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <ShoppingCart className="w-3.5 h-3.5" />
+          <span>Cart ({cart.reduce((acc, c) => acc + c.quantity, 0)})</span>
+          {cart.length > 0 && (
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${mobileTab === 'cart' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-100 text-emerald-800'}`}>
+              {formatCurrency(grandTotal, settings.currencySymbol)}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Main Split Interface */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column: Product Selection Grid (7 cols) */}
-        <div className="lg:col-span-7 space-y-3 flex flex-col">
+        <div className={`lg:col-span-7 space-y-3 flex-col ${mobileTab === 'catalog' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Search bar */}
           <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
             <form onSubmit={handleBarcodeSearchSubmit} className="relative">
@@ -334,7 +369,7 @@ export const POSRegister: React.FC = () => {
         </div>
 
         {/* Right Column: Active POS Cart (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col bg-white rounded-lg border border-emerald-100 shadow-sm overflow-hidden">
+        <div className={`lg:col-span-5 flex-col bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden ${mobileTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Cart Header */}
           <div className="p-3.5 bg-[#064e3b] text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -452,14 +487,49 @@ export const POSRegister: React.FC = () => {
             <button
               disabled={cart.length === 0}
               onClick={handleOpenCheckout}
-              className="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+              className="w-full mt-2 py-3.5 bg-[#064e3b] hover:bg-[#043b2c] disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed active:scale-98"
             >
-              <CreditCard className="w-4 h-4" />
-              <span>Charge & Checkout ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
+              <CreditCard className="w-4 h-4 text-emerald-300" />
+              <span>Proceed to Full-Page Checkout ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
+              <ArrowRight className="w-4 h-4 text-emerald-300" />
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Floating Checkout Bar when items exist in cart and user is browsing catalog */}
+      {cart.length > 0 && mobileTab === 'catalog' && (
+        <div className="lg:hidden fixed bottom-16 left-3 right-3 z-30 bg-[#064e3b] text-white p-3 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center justify-between animate-in slide-in-from-bottom-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-400 text-[#064e3b] flex items-center justify-center font-black font-mono text-xs">
+              {cart.reduce((acc, c) => acc + c.quantity, 0)}
+            </div>
+            <div>
+              <p className="text-[10px] text-emerald-200 uppercase font-semibold">Active Cart</p>
+              <p className="text-sm font-black text-white font-mono leading-tight">
+                {formatCurrency(grandTotal, settings.currencySymbol)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileTab('cart')}
+              className="px-2.5 py-1.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 rounded-lg text-xs font-semibold"
+            >
+              View Cart
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkout')}
+              className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-[#064e3b] rounded-lg text-xs font-extrabold flex items-center gap-1 shadow-sm cursor-pointer"
+            >
+              <span>Checkout</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* CHECKOUT PAYMENT MODAL */}

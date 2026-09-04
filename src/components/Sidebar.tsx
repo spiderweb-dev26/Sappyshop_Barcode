@@ -177,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="space-y-1.5">
           {navItems.map((item) => {
             const isAllowed = item.allowedRoles.includes(currentUser.role);
-            const isActive = activeTab === item.id;
+            const isActive = activeTab === item.id || (item.id === 'pos' && activeTab === 'checkout');
             const Icon = item.icon;
 
             if (!isAllowed) {

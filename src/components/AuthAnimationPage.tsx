@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   User as UserIcon, 
@@ -133,13 +133,23 @@ export const AuthAnimationPage: React.FC = () => {
     }
   };
 
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const bladeSkew = -5;
+  const currentBladeSkew = isDesktop ? (authMode === 'signup' ? bladeSkew : -bladeSkew) : 0;
+  const currentCounterSkew = isDesktop ? (authMode === 'signup' ? -bladeSkew : bladeSkew) : 0;
 
   return (
     <LoginBackground>
-      <div className="w-full max-w-3xl mx-auto flex items-center justify-center font-sans">
+      <div className="w-full max-w-3xl mx-auto flex items-center justify-center font-sans px-2 sm:px-4">
         {/* Standalone Morphing Auth Card */}
-        <div className="relative w-full min-h-[480px] bg-[#f8f4ec] text-slate-900 rounded-[28px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden border border-[#e5dec9] flex flex-col md:flex-row transition-all duration-300">
+        <div className="relative w-full min-h-[480px] bg-[#f8f4ec] text-slate-900 rounded-[24px] sm:rounded-[28px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden border border-[#e5dec9] flex flex-col md:flex-row transition-all duration-300">
         
         {/* Form Area with Warm Off-White / Cream Theme */}
         <div className={`w-full md:w-7/12 p-8 sm:p-10 flex flex-col justify-center bg-[#f8f4ec] relative z-10 ${
@@ -423,16 +433,16 @@ export const AuthAnimationPage: React.FC = () => {
             damping: 20
           }}
           style={{
-            transform: `skewX(${authMode === 'signup' ? bladeSkew : -bladeSkew}deg)`
+            transform: `skewX(${currentBladeSkew}deg)`
           }}
-          className={`w-full md:w-5/12 bg-[#04281e] text-white p-7 sm:p-9 flex flex-col justify-between relative overflow-hidden z-20 ${
+          className={`w-full md:w-5/12 bg-[#04281e] text-white p-6 sm:p-9 flex flex-col justify-between relative overflow-hidden z-20 ${
             authMode === 'signup' ? 'md:order-1' : 'md:order-2'
           }`}
         >
           {/* Counter-skew inner container so all text & icons remain perfectly vertical */}
           <div 
             style={{
-              transform: `skewX(${authMode === 'signup' ? -bladeSkew : bladeSkew}deg)`
+              transform: `skewX(${currentCounterSkew}deg)`
             }}
             className="h-full flex flex-col justify-between relative z-10"
           >

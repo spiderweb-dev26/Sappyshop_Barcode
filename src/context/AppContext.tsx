@@ -242,14 +242,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      const savedUsers = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
-      if (!savedUsers) return false;
-      const parsed = JSON.parse(savedUsers);
-      if (!Array.isArray(parsed) || parsed.length === 0) return false;
       const savedAuth = localStorage.getItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
-      return savedAuth === 'true';
+      if (savedAuth !== null) {
+        return savedAuth === 'true';
+      }
+      // On fresh load, default to active store session (Admin)
+      return true;
     } catch {
-      return false;
+      return true;
     }
   });
 

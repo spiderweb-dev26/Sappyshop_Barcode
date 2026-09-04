@@ -140,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarContent = (
-    <aside className="w-64 lg:w-56 bg-[#064e3b] text-white flex flex-col shrink-0 select-none min-h-full p-4 justify-between border-r border-[#043b2c] shadow-xl lg:shadow-none">
+    <aside className="w-64 lg:w-56 bg-[#064e3b] text-white flex flex-col shrink-0 select-none min-h-full p-4 justify-between border-r border-[#043b2c] shadow-xl lg:shadow-none overflow-y-auto">
       {/* Top Logo Emblem & Mobile Close */}
       <div>
         <div className="flex items-center justify-between py-2 mb-3">
@@ -277,7 +277,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onCloseMobile}
           />
           {/* Off-canvas Sliding Container */}
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-[#064e3b] z-10 animate-in slide-in-from-left duration-250">
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-[#064e3b] z-10 animate-in slide-in-from-left duration-250 h-full overflow-hidden shadow-2xl">
             {sidebarContent}
           </div>
         </div>

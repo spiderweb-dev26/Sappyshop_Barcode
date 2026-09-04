@@ -24,6 +24,7 @@ import { DuplicateScanModal } from './components/DuplicateScanModal';
 import { UserPinModal } from './components/UserPinModal';
 import { MasterPasscodeModal } from './components/MasterPasscodeModal';
 import { ToastContainer } from './components/ToastContainer';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 const MainLayout: React.FC = () => {
   const { activeTab, isAuthenticated } = useApp();
@@ -32,7 +33,7 @@ const MainLayout: React.FC = () => {
   // If user is not authenticated (logged out), render the AuthAnimationPage with Sappy logo as primary screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen relative selection:bg-emerald-500 selection:text-slate-950">
+      <div className="min-h-screen min-h-[100dvh] relative selection:bg-emerald-500 selection:text-slate-950">
         <AuthAnimationPage />
         <ToastContainer />
       </div>
@@ -69,14 +70,14 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f1e8] text-slate-800 flex flex-col font-sans antialiased selection:bg-[#064e3b] selection:text-white print:bg-white print:min-h-0 print:overflow-visible print:block">
+    <div className="min-h-screen min-h-[100dvh] h-screen h-[100dvh] bg-[#f5f1e8] text-slate-800 flex flex-col font-sans antialiased selection:bg-[#064e3b] selection:text-white print:bg-white print:h-auto print:min-h-0 print:overflow-visible print:block">
       {/* Top Navbar with mobile hamburger toggle */}
       <Navbar 
         onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         isMobileSidebarOpen={isMobileSidebarOpen}
       />
 
-      <div className="flex-1 flex overflow-hidden relative print:block print:overflow-visible">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 relative w-full print:block print:overflow-visible">
         {/* Responsive Sidebar (desktop sticky + mobile/tablet sliding drawer) */}
         <Sidebar 
           isMobileOpen={isMobileSidebarOpen}
@@ -84,12 +85,18 @@ const MainLayout: React.FC = () => {
         />
 
         {/* Dynamic Content Main Area */}
-        <main className="flex-1 overflow-y-auto bg-[#f5f1e8] p-3 sm:p-5 lg:p-6 print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
-          <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0">
+        <main className="flex-1 overflow-y-auto min-h-0 w-full bg-[#f5f1e8] p-3 sm:p-5 lg:p-6 print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
+          <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0 pb-20 lg:pb-6">
             {renderActiveView()}
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Hidden on Desktop) */}
+      <MobileBottomNav 
+        onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+      />
 
       {/* Global Interactive Overlays */}
       <div className="print:hidden">

@@ -12,6 +12,15 @@
     --color-beige-border: #dfd7c7;
   }
 
+  html, body, #root {
+    height: 100%;
+    min-height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     background-color: #f5f1e8;
     color: #26201b;
@@ -65,7 +74,6 @@
   select,
   .no-print,
   .print-hidden,
-  .print\\:hidden,
   #toast-container,
   [role="dialog"]:not(.printable-modal) {
     display: none !important;
@@ -218,4 +226,19 @@
     background: #ffffff !important;
     color: #000000 !important;
   }
+}
+
+/* Responsive camera stream in BarcodeScannerModal */
+#interactive-barcode-scanner {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+#interactive-barcode-scanner video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 0.75rem !important;
 }

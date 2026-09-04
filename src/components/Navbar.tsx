@@ -99,16 +99,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#064e3b] flex items-center justify-center p-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
                 <SappyLogoMark size={24} color="#ffffff" />
               </div>
-              <div className="hidden xs:block sm:block">
+              <div className="flex flex-col text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight">
+                  <span className="font-extrabold text-xs sm:text-base text-slate-900 tracking-tight">
                     SAPPY <span className="text-[#064e3b]">STATIONERY</span>
                   </span>
                   <span className="text-[9px] bg-emerald-100 text-[#064e3b] px-1.5 py-0.2 rounded font-mono font-bold uppercase hidden md:inline-block">
                     POS
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-serif italic leading-none">
+                <p className="text-[9px] sm:text-[10px] text-slate-500 font-serif italic leading-none">
                   stationery &amp; printing.
                 </p>
               </div>

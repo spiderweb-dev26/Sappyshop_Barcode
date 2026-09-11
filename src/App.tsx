@@ -16,6 +16,7 @@ import { MasterPasscodeModal } from './components/MasterPasscodeModal';
 import { ToastContainer } from './components/ToastContainer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { WelcomeAnimation } from './components/WelcomeAnimation';
 
 // Code-split heavy secondary components to minimize initial mobile bundle size
 const InventoryList = React.lazy(() => import('./components/InventoryList').then(m => ({ default: m.InventoryList })));
@@ -37,7 +38,7 @@ const ModuleLoadingFallback = () => (
 );
 
 const MainLayout: React.FC = () => {
-  const { activeTab, isAuthenticated } = useApp();
+  const { activeTab, isAuthenticated, welcomeUser, clearWelcomeUser, settings } = useApp();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // If user is not authenticated (logged out), render the AuthAnimationPage with Sappy logo as primary screen
@@ -45,6 +46,13 @@ const MainLayout: React.FC = () => {
     return (
       <div className="min-h-screen min-h-[100dvh] relative selection:bg-emerald-500 selection:text-slate-950">
         <AuthAnimationPage />
+        {welcomeUser && (
+          <WelcomeAnimation
+            user={welcomeUser}
+            onComplete={clearWelcomeUser}
+            enableSound={settings.enableSoundEffects ?? true}
+          />
+        )}
         <ToastContainer />
       </div>
     );
@@ -119,6 +127,15 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen min-h-[100dvh] h-screen h-[100dvh] bg-[#f5f1e8] text-slate-800 flex flex-col font-sans antialiased selection:bg-[#064e3b] selection:text-white print:bg-white print:h-auto print:min-h-0 print:overflow-visible print:block">
+      {/* Welcome Animation overlay on Login / Operator Switch */}
+      {welcomeUser && (
+        <WelcomeAnimation
+          user={welcomeUser}
+          onComplete={clearWelcomeUser}
+          enableSound={settings.enableSoundEffects ?? true}
+        />
+      )}
+
       {/* Top Navbar with mobile hamburger toggle */}
       <Navbar 
         onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}

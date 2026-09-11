@@ -158,6 +158,37 @@ class SoundEngine {
       // Ignore
     }
   }
+
+  playWelcomeChime() {
+    try {
+      this.initCtx();
+      if (!this.ctx) return;
+
+      const now = this.ctx.currentTime;
+      // Warm, uplifting harmonic luxury chime (E major triad: E5 -> G#5 -> B5 -> E6)
+      const freqs = [659.25, 830.61, 987.77, 1318.51];
+      freqs.forEach((freq, idx) => {
+        if (!this.ctx) return;
+        const noteTime = now + idx * 0.08;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, noteTime);
+
+        gain.gain.setValueAtTime(0.2, noteTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(noteTime);
+        osc.stop(noteTime + 0.35);
+      });
+    } catch {
+      // Ignore
+    }
+  }
 }
 
 export const soundEffects = new SoundEngine();

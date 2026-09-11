@@ -99,6 +99,11 @@ interface AppContextType {
   // Permissions
   hasPermission: (allowedRoles: UserRole[]) => boolean;
 
+  // Welcome Animation
+  welcomeUser: User | null;
+  triggerWelcomeAnimation: (user: User) => void;
+  clearWelcomeUser: () => void;
+
   // User Actions
   switchUser: (userId: string, enteredPin?: string) => boolean;
   loginUser: (emailOrName: string, pinOrPasscode: string) => boolean;
@@ -262,6 +267,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
   });
+
+  // Welcome Animation state on login
+  const [welcomeUser, setWelcomeUser] = useState<User | null>(null);
+
+  const triggerWelcomeAnimation = useCallback((user: User) => {
+    setWelcomeUser(user);
+  }, []);
+
+  const clearWelcomeUser = useCallback(() => {
+    setWelcomeUser(null);
+  }, []);
 
   const [sales, setSales] = useState<SaleRecord[]>(() => {
     try {
@@ -602,6 +618,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUsers(prev => prev.map(u => u.id === targetUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
+    setWelcomeUser(updatedUser);
 
     logActivity('USER_LOGIN', 'USER', updatedUser.id, `User ${updatedUser.name} (${updatedUser.role}) switched active session.`);
     addToast('success', `Welcome, ${updatedUser.name}!`, `Switched active role to ${updatedUser.role}.`);
@@ -628,6 +645,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUsers([initialAdmin]);
         setCurrentUser(initialAdmin);
         setIsAuthenticated(true);
+        setWelcomeUser(initialAdmin);
         syncUserToCloud(initialAdmin);
         addToast('success', 'Master Passcode Authenticated', `Store Administrator account initialized. Welcome, ${initialAdmin.name}!`);
         if (settings.enableSoundEffects) soundEffects.playScanSuccess();
@@ -650,6 +668,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (adminUser) {
           setCurrentUser(adminUser);
           setIsAuthenticated(true);
+          setWelcomeUser(adminUser);
           addToast('success', 'Master Passcode Authenticated', `Signed in as Administrator (${adminUser.name})`);
           if (settings.enableSoundEffects) soundEffects.playScanSuccess();
           return true;
@@ -698,6 +717,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers(prev => prev.map(u => (u.id === targetUser.id ? updatedUser : u)));
     setCurrentUser(updatedUser);
     setIsAuthenticated(true);
+    setWelcomeUser(updatedUser);
     syncUserToCloud(updatedUser);
 
     logActivity('USER_LOGIN', 'USER', updatedUser.id, `User ${updatedUser.name} logged in via Auth screen.`);
@@ -771,6 +791,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Auto-approved Administrator session
       setCurrentUser(newUser);
       setIsAuthenticated(true);
+      setWelcomeUser(newUser);
 
       logActivity(
         'USER_CREATED', 
@@ -854,6 +875,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutUser = useCallback(() => {
     setIsAuthenticated(false);
+    setWelcomeUser(null);
     try {
       localStorage.removeItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
     } catch { /* ignore */ }
@@ -1688,6 +1710,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closeMasterAuth,
         verifyMasterPasscode,
         hasPermission,
+        welcomeUser,
+        triggerWelcomeAnimation,
+        clearWelcomeUser,
         switchUser,
         loginUser,
         signupUser,

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/currencyUtils';
+import { getItemDisplayImage } from '../utils/imageUtils';
 import { AlertCircle, Plus, X, ShoppingCart, Package, Barcode as BarcodeIcon } from 'lucide-react';
 
 export const DuplicateScanModal: React.FC = () => {
@@ -61,16 +62,12 @@ export const DuplicateScanModal: React.FC = () => {
             <div className="flex items-start gap-3">
               {/* Product Image */}
               <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center shadow-xs">
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-contain p-1"
-                  />
-                ) : (
-                  <Package className="w-6 h-6 text-slate-400" />
-                )}
+                <img
+                  src={getItemDisplayImage(item)}
+                  alt={item.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain p-1"
+                />
               </div>
 
               <div className="min-w-0 flex-1">

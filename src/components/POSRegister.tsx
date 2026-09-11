@@ -32,6 +32,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SappyLogoMark } from './SappyLogo';
 import { formatCurrency } from '../utils/currencyUtils';
+import { getItemDisplayImage } from '../utils/imageUtils';
 
 const SAPPY_PAYMENT_METHODS: { id: PaymentMethod; label: string; subLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'CASH', label: 'Cash', subLabel: 'Direct Cash', icon: Banknote },
@@ -280,19 +281,12 @@ export const POSRegister: React.FC = () => {
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Product Image */}
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-900 border border-emerald-500/40 shrink-0 overflow-hidden flex items-center justify-center relative shadow-inner">
-              {lastScannedItem.item.imageUrl ? (
-                <img
-                  src={lastScannedItem.item.imageUrl}
-                  alt={lastScannedItem.item.name}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-contain p-1"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-slate-400 p-1">
-                  <Package className="w-5 h-5 text-emerald-400" />
-                  <span className="text-[8px] font-bold text-slate-400 truncate max-w-[44px]">{lastScannedItem.item.category}</span>
-                </div>
-              )}
+              <img
+                src={getItemDisplayImage(lastScannedItem.item)}
+                alt={lastScannedItem.item.name}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-contain p-1"
+              />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -415,21 +409,12 @@ export const POSRegister: React.FC = () => {
                 >
                   {/* Item Image / Visual Placeholder */}
                   <div className="w-full h-24 mb-2 rounded-md bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center relative">
-                    {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-slate-300">
-                        <ImageIcon className="w-6 h-6 text-slate-300" />
-                        <span className="text-[9px] font-semibold text-slate-400 mt-1 max-w-[80px] truncate">
-                          {item.category || 'Stationery'}
-                        </span>
-                      </div>
-                    )}
+                    <img
+                      src={getItemDisplayImage(item)}
+                      alt={item.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
+                    />
                     {/* Cart count badge */}
                     {inCart && (
                       <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-emerald-600 text-white font-bold rounded-full text-[10px] flex items-center justify-center shadow-xs">
@@ -508,20 +493,14 @@ export const POSRegister: React.FC = () => {
             ) : (
               cart.map(({ item, quantity, unitPrice }) => (
                 <div key={item.id} className="py-2.5 flex items-center justify-between gap-2.5 text-xs">
-                  {item.imageUrl ? (
-                    <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain p-0.5"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center text-slate-400">
-                      <ImageIcon className="w-4 h-4 text-slate-400" />
-                    </div>
-                  )}
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                    <img
+                      src={getItemDisplayImage(item)}
+                      alt={item.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain p-0.5"
+                    />
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-slate-900 truncate">{item.name}</p>
                     <p className="text-[11px] text-slate-500 font-mono">

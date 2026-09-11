@@ -37,6 +37,7 @@ import {
 import { formatCurrency } from '../utils/currencyUtils';
 import { generateAutoSku, generateAutoBarcode, isCostUnknown, formatCostPrice, calculateProfitMargin } from '../utils/skuBarcodeUtils';
 import { getFullStationeryCatalog, SAPPY_STATIONERY_CATALOG } from '../data/stationeryCatalog';
+import { getItemDisplayImage } from '../utils/imageUtils';
 
 export const InventoryList: React.FC = () => {
   const { 
@@ -399,33 +400,31 @@ export const InventoryList: React.FC = () => {
                     <tr key={item.id} className="hover:bg-emerald-50/30 transition-colors group">
                       {/* Item Photo / Thumbnail */}
                       <td className="py-2.5 px-3 text-center">
-                        {item.imageUrl ? (
-                          <button
-                            type="button"
-                            onClick={() => setQuickImageItem(item)}
-                            className="relative group/thumb w-10 h-10 mx-auto rounded-lg overflow-hidden border border-slate-200 bg-white hover:ring-2 hover:ring-emerald-500 transition-all shadow-2xs block"
-                            title="Click to change or view photo"
-                          >
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-contain p-0.5"
-                            />
-                            <span className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
-                              Edit
-                            </span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setQuickImageItem(item)}
-                            className="w-10 h-10 mx-auto rounded-lg border border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/60 text-slate-400 hover:text-emerald-700 transition-all flex flex-col items-center justify-center group/btn"
-                            title="Add photo for this item"
-                          >
-                            <Camera className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                          </button>
-                        )}
+                        {(() => {
+                          const displayImg = getItemDisplayImage(item);
+                          const isCustom = Boolean(item.imageUrl && item.imageUrl.trim().length > 0);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setQuickImageItem(item)}
+                              className="relative group/thumb w-10 h-10 mx-auto rounded-lg overflow-hidden border border-slate-200 bg-white hover:ring-2 hover:ring-emerald-500 transition-all shadow-2xs block"
+                              title={isCustom ? "Custom photo (click to change)" : "Auto stationery photo (click to upload custom)"}
+                            >
+                              <img
+                                src={displayImg}
+                                alt={item.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-contain p-0.5"
+                              />
+                              <span className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
+                                {isCustom ? 'Edit' : '+ Custom'}
+                              </span>
+                              {isCustom && (
+                                <span className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white" title="Custom photo uploaded" />
+                              )}
+                            </button>
+                          );
+                        })()}
                       </td>
 
                       {/* SKU & Barcode */}
@@ -1043,6 +1042,22 @@ export const InventoryList: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* QUICK PRODUCT IMAGE MODAL */}
+      {/* ========================================================================= */}
+      {quickImageItem && (
+        <QuickImageModal
+          item={quickImageItem}
+          isOpen={Boolean(quickImageItem)}
+          onClose={() => setQuickImageItem(null)}
+          onSaveImage={(itemId, newImageUrl) => {
+            updateItem(itemId, { imageUrl: newImageUrl });
+            addToast('success', 'Product Photo Saved', `Updated image for "${quickImageItem.name}".`);
+            setQuickImageItem(null);
+          }}
+        />
       )}
     </div>
   );

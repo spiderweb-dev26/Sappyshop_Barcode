@@ -30,6 +30,8 @@ import {
 import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { resolveScannedBarcodeOrQr } from '../utils/skuBarcodeUtils';
+import { getItemDisplayImage } from '../utils/imageUtils';
+import { QuickImageModal } from './QuickImageModal';
 import { InventoryItem } from '../types';
 
 type ScanFeedback = 
@@ -49,7 +51,8 @@ export const BarcodeScannerModal: React.FC = () => {
     clearCart,
     setActiveTab,
     settings, 
-    addToast 
+    addToast,
+    updateItem
   } = useApp();
 
   const [manualCode, setManualCode] = useState('');
@@ -66,6 +69,7 @@ export const BarcodeScannerModal: React.FC = () => {
   // Track most recently scanned item to highlight right below the scanner
   const [lastScannedItemId, setLastScannedItemId] = useState<string | null>(null);
   const [showManualTools, setShowManualTools] = useState<boolean>(false);
+  const [imageEditItem, setImageEditItem] = useState<InventoryItem | null>(null);
 
   // Single-item scan state & duplicate confirmation
   const [scanResult, setScanResult] = useState<ScanFeedback | null>(null);
@@ -696,24 +700,32 @@ export const BarcodeScannerModal: React.FC = () => {
 
                   <div className="flex items-center gap-3 bg-slate-900/90 p-3 rounded-xl border border-emerald-500/30">
                     {/* Scanned Product Photo */}
-                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-950 border border-emerald-500/50 shrink-0 overflow-hidden flex items-center justify-center shadow-lg">
-                      {scanResult.item.imageUrl ? (
-                        <img
-                          src={scanResult.item.imageUrl}
-                          alt={scanResult.item.name}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-500 p-1 text-center">
-                          <Package className="w-6 h-6 text-emerald-400/80" />
-                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5 truncate max-w-[54px]">{scanResult.item.category}</span>
+                    {(() => {
+                      const displayImg = getItemDisplayImage(scanResult.item);
+                      const isCustom = Boolean(scanResult.item.imageUrl && scanResult.item.imageUrl.trim().length > 0);
+                      return (
+                        <div className="relative w-18 h-18 sm:w-22 sm:h-22 rounded-xl bg-slate-950 border-2 border-emerald-500/70 shrink-0 overflow-hidden flex items-center justify-center shadow-lg group/img">
+                          <img
+                            src={displayImg}
+                            alt={scanResult.item.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-contain p-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setImageEditItem(scanResult.item)}
+                            className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold p-1 cursor-pointer"
+                            title="Upload or snap photo for this item"
+                          >
+                            <Camera className="w-4 h-4 text-emerald-400 mb-0.5" />
+                            <span>{isCustom ? 'Change Photo' : 'Upload Photo'}</span>
+                          </button>
+                          <span className="absolute bottom-0 inset-x-0 bg-emerald-950/90 text-emerald-300 text-[8px] font-bold text-center py-0.5 uppercase tracking-wider border-t border-emerald-500/30">
+                            {isCustom ? 'Custom Photo' : 'Photo'}
+                          </span>
                         </div>
-                      )}
-                      <span className="absolute bottom-0 inset-x-0 bg-emerald-950/90 text-emerald-300 text-[8px] font-bold text-center py-0.5 uppercase tracking-wider border-t border-emerald-500/30">
-                        Verified
-                      </span>
-                    </div>
+                      );
+                    })()}
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -723,6 +735,14 @@ export const BarcodeScannerModal: React.FC = () => {
                         <span className="text-[10px] text-slate-400 font-mono">
                           SKU: {scanResult.item.sku}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => setImageEditItem(scanResult.item)}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 underline underline-offset-2 ml-auto cursor-pointer"
+                        >
+                          <Camera className="w-3 h-3" />
+                          <span>{scanResult.item.imageUrl ? 'Edit Photo' : 'Add Photo'}</span>
+                        </button>
                       </div>
                       <h4 className="font-bold text-sm sm:text-base text-white truncate mt-1">
                         {scanResult.item.name}
@@ -815,23 +835,39 @@ export const BarcodeScannerModal: React.FC = () => {
 
                   <div className="flex items-center gap-3 bg-slate-900/90 p-3 rounded-xl border border-amber-500/30">
                     {/* Duplicate Scanned Product Photo */}
-                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-950 border border-amber-500/50 shrink-0 overflow-hidden flex items-center justify-center shadow-lg">
-                      {scanResult.item.imageUrl ? (
-                        <img
-                          src={scanResult.item.imageUrl}
-                          alt={scanResult.item.name}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-500 p-1">
-                          <Package className="w-5 h-5 text-amber-400/80" />
-                        </div>
-                      )}
+                    <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-xl bg-slate-950 border-2 border-amber-500/60 shrink-0 overflow-hidden flex items-center justify-center shadow-lg group/img">
+                      <img
+                        src={getItemDisplayImage(scanResult.item)}
+                        alt={scanResult.item.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-contain p-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setImageEditItem(scanResult.item)}
+                        className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[9px] font-bold p-1 cursor-pointer"
+                        title="Upload or snap photo"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-amber-400 mb-0.5" />
+                        <span>Photo</span>
+                      </button>
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-sm text-white truncate">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-amber-300 font-mono">
+                          SKU: {scanResult.item.sku}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setImageEditItem(scanResult.item)}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 underline underline-offset-2 cursor-pointer"
+                        >
+                          <Camera className="w-3 h-3" />
+                          <span>Photo</span>
+                        </button>
+                      </div>
+                      <h4 className="font-bold text-sm text-white truncate mt-0.5">
                         {scanResult.item.name}
                       </h4>
                       <p className="text-xs text-amber-300/90 mt-0.5">
@@ -940,16 +976,12 @@ export const BarcodeScannerModal: React.FC = () => {
                       {/* Left: Product Thumbnail & Info */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 shrink-0 overflow-hidden flex items-center justify-center">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-contain p-0.5"
-                            />
-                          ) : (
-                            <Package className="w-4 h-4 text-slate-600" />
-                          )}
+                          <img
+                            src={getItemDisplayImage(item)}
+                            alt={item.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-contain p-0.5"
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
@@ -1177,6 +1209,26 @@ export const BarcodeScannerModal: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Quick Image Modal for immediate photo update during scanning */}
+      {imageEditItem && (
+        <QuickImageModal
+          item={imageEditItem}
+          isOpen={Boolean(imageEditItem)}
+          onClose={() => setImageEditItem(null)}
+          onSaveImage={(itemId, newImageUrl) => {
+            updateItem(itemId, { imageUrl: newImageUrl });
+            if (scanResult && scanResult.item.id === itemId) {
+              setScanResult(prev => {
+                if (!prev || prev.type === 'NOT_FOUND') return prev;
+                return { ...prev, item: { ...prev.item, imageUrl: newImageUrl } };
+              });
+            }
+            addToast('success', 'Product Photo Saved', `Updated image for "${imageEditItem.name}".`);
+            setImageEditItem(null);
+          }}
+        />
+      )}
     </div>
   );
 };

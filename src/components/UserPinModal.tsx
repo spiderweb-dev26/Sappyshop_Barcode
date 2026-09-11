@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { User, UserRole, MASTER_PASSCODE } from '../types';
-import { X, ShieldCheck, Lock, KeyRound, CheckCircle2, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { X, ShieldCheck, Lock, KeyRound, CheckCircle2, ArrowRight, Sparkles, Eye, EyeOff, Key } from 'lucide-react';
 
 interface UserPinModalProps {
   isOpen?: boolean;
@@ -10,16 +10,28 @@ interface UserPinModalProps {
 }
 
 export const UserPinModal: React.FC<UserPinModalProps> = ({ isOpen = true, onClose, targetUser }) => {
-  const { users, currentUser, switchUser, settings } = useApp();
+  const { users, currentUser, switchUser, settings, updateUserPin, addToast } = useApp();
   const approvedUsers = (users || []).filter(u => u.approvalStatus === 'APPROVED' || !u.approvalStatus);
   const [selectedUserId, setSelectedUserId] = useState<string>(
     targetUser?.id || currentUser?.id || approvedUsers[0]?.id || users[0]?.id || ''
   );
+  
+  // Navigation tab
+  const [modalTab, setModalTab] = useState<'switch' | 'set_pin'>('switch');
+
+  // Switch PIN & text password state
   const [pin, setPin] = useState<string>('');
   const [textPassword, setTextPassword] = useState<string>('');
   const [useTextPasswordMode, setUseTextPasswordMode] = useState<boolean>(false);
   const [showTextPassword, setShowTextPassword] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
+
+  // Set Custom PIN state
+  const [newCustomPin, setNewCustomPin] = useState<string>('');
+  const [confirmCustomPin, setConfirmCustomPin] = useState<string>('');
+  const [showCustomPin, setShowCustomPin] = useState<boolean>(false);
+  const [customPinError, setCustomPinError] = useState<string>('');
+  const [customPinSuccess, setCustomPinSuccess] = useState<string>('');
 
   if (!isOpen || (users || []).length === 0) return null;
 
@@ -75,6 +87,36 @@ export const UserPinModal: React.FC<UserPinModalProps> = ({ isOpen = true, onClo
     attemptLogin(selectedUserId, textPassword.trim());
   };
 
+  const handleSaveCustomPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomPinError('');
+    setCustomPinSuccess('');
+    const clean = newCustomPin.replace(/\D/g, '').trim();
+    const cleanConfirm = confirmCustomPin.replace(/\D/g, '').trim();
+
+    if (clean.length < 4) {
+      setCustomPinError('PIN must be at least 4 digits (0-9).');
+      return;
+    }
+    if (clean !== cleanConfirm) {
+      setCustomPinError('PIN confirmation does not match. Please re-enter.');
+      return;
+    }
+
+    updateUserPin(selectedUserId, clean);
+    const target = users.find(u => u.id === selectedUserId);
+    const msg = `PIN for ${target?.name || 'User'} has been updated to ${clean}!`;
+    setCustomPinSuccess(msg);
+    addToast('success', 'Custom PIN Saved', msg);
+    setNewCustomPin('');
+    setConfirmCustomPin('');
+
+    setTimeout(() => {
+      setCustomPinSuccess('');
+      setModalTab('switch');
+    }, 1500);
+  };
+
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'ADMIN':
@@ -100,8 +142,8 @@ export const UserPinModal: React.FC<UserPinModalProps> = ({ isOpen = true, onClo
               <ShieldCheck className="w-4 h-4 text-emerald-200" />
             </div>
             <div>
-              <h3 className="font-bold text-xs uppercase tracking-wider">Terminal Access & Role Switcher</h3>
-              <p className="text-[11px] text-emerald-200">Store Profile & Operator Session</p>
+              <h3 className="font-bold text-xs uppercase tracking-wider">Terminal Access & PIN</h3>
+              <p className="text-[11px] text-emerald-200">Operator Profile & Security PIN</p>
             </div>
           </div>
           <button
@@ -113,240 +155,415 @@ export const UserPinModal: React.FC<UserPinModalProps> = ({ isOpen = true, onClo
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setModalTab('switch')}
+            className={`flex-1 py-2.5 px-3 flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              modalTab === 'switch'
+                ? 'border-emerald-700 text-emerald-900 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Switch Profile</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalTab('set_pin')}
+            className={`flex-1 py-2.5 px-3 flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              modalTab === 'set_pin'
+                ? 'border-emerald-700 text-emerald-900 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>Set / Change PIN</span>
+          </button>
+        </div>
+
         {/* Body */}
         <div className="p-4 space-y-3.5 max-h-[85vh] overflow-y-auto">
-          {/* User selector cards */}
-          <div>
-            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Select User Profile
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {approvedUsers.map((u) => {
-                const isSelected = u.id === selectedUserId;
-                const isCurrent = u.id === currentUser?.id;
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      setSelectedUserId(u.id);
-                      setPin('');
-                      setTextPassword('');
-                      setErrorMsg('');
-                    }}
-                    className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all relative ${
-                      isSelected
-                        ? 'border-emerald-600 bg-emerald-50/80 shadow-xs ring-1 ring-emerald-500/30'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-full ${u.avatarColor} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs`}>
-                      {u.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-bold text-slate-900 truncate">{u.name}</p>
-                        {isCurrent && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" title="Active" />
-                        )}
-                      </div>
-                      <span className={`text-[9px] font-semibold px-1 py-0.2 rounded border uppercase inline-block mt-0.5 ${getRoleBadge(u.role)}`}>
-                        {u.role}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Target Banner */}
-          <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-              <span className="text-xs text-slate-600">
-                Selected: <strong className="text-slate-900">{activeTarget?.name || 'Staff User'}</strong>
-              </span>
-            </div>
-            {isCurrentActiveUser ? (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-2 py-0.5 rounded-full">
-                Active Session
-              </span>
-            ) : requirePin ? (
-              <span className="text-[10px] text-amber-700 font-mono font-bold bg-amber-100/80 border border-amber-300 px-2 py-0.5 rounded-full">
-                PIN Verification
-              </span>
-            ) : (
-              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100/80 border border-emerald-300 px-2 py-0.5 rounded-full">
-                Quick Access
-              </span>
-            )}
-          </div>
-
-          {/* If already active as this user: simply offer Dismiss / Continue */}
-          {isCurrentActiveUser ? (
-            <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl text-center space-y-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-6 h-6 text-emerald-700" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">You are already signed in as {activeTarget?.name}</h4>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Your current terminal role is <strong className="text-emerald-800 font-bold">{activeTarget?.role}</strong>. No PIN verification is required.
-                </p>
-              </div>
-              <div className="flex gap-2 justify-center pt-1">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
-                >
-                  Continue Active Session
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* One-Click Quick Switch (No PIN Required) */}
-              <div className="p-3 bg-emerald-50/50 border border-emerald-200/80 rounded-xl space-y-2">
+          {modalTab === 'set_pin' ? (
+            /* ========================================================================= */
+            /* SET / CHANGE CUSTOM PIN TAB                                               */
+            /* ========================================================================= */
+            <div className="space-y-3.5">
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Instant Switch (No PIN Required)</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-700 font-medium">1-Click</span>
+                  <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Set Your Custom Access PIN</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-800 bg-white border border-emerald-300 px-1.5 py-0.5 rounded">
+                    SHA-256
+                  </span>
                 </div>
                 <p className="text-[11px] text-slate-600">
-                  Switch terminal operator to <strong>{activeTarget?.name}</strong> immediately without entering a passcode.
+                  Pick your own 4-digit code. You can use this PIN to sign in or switch profiles on this terminal.
                 </p>
-                <button
-                  type="button"
-                  onClick={handleQuickSwitchNoPin}
-                  className="w-full h-9 bg-[#064e3b] hover:bg-[#085a44] text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
-                >
-                  <span>Switch to {activeTarget?.name.split(' ')[0]} Now</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
               </div>
 
-              {/* Security Hint & Default PIN Banner */}
-              <div className="flex items-center justify-between p-2 bg-slate-100 border border-slate-200 rounded-lg text-[11px] text-slate-600">
-                <span className="flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-slate-500" />
-                  <span>Default PIN: <strong className="text-slate-900 font-mono">1234</strong></span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleUseDefaultPin}
-                  className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-300 hover:bg-emerald-50 px-2 py-0.5 rounded transition-colors"
+              {/* Target Profile Picker */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                  Select Profile to Update
+                </label>
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => {
+                    setSelectedUserId(e.target.value);
+                    setNewCustomPin('');
+                    setConfirmCustomPin('');
+                    setCustomPinError('');
+                  }}
+                  className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-600 shadow-xs"
                 >
-                  Fill Default 1234
-                </button>
+                  {approvedUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.role}){u.id === currentUser?.id ? ' — [You / Active]' : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Password Mode Toggle */}
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={() => setUseTextPasswordMode(!useTextPasswordMode)}
-                  className="text-[11px] text-slate-500 hover:text-emerald-700 underline font-medium"
-                >
-                  {useTextPasswordMode ? 'Use 4-digit keypad instead' : 'Enter account password instead'}
-                </button>
-                <span className="text-[10px] text-slate-400 font-mono">Master Code: {MASTER_PASSCODE}</span>
-              </div>
-
-              {/* Text Password Mode (if user set a password instead of 4-digit PIN) */}
-              {useTextPasswordMode ? (
-                <form onSubmit={handleTextPasswordSubmit} className="space-y-2 pt-1">
-                  <div className="relative">
-                    <input
-                      type={showTextPassword ? 'text' : 'password'}
-                      value={textPassword}
-                      onChange={(e) => setTextPassword(e.target.value)}
-                      placeholder="Enter account password or PIN"
-                      className="w-full h-10 px-3 pr-9 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600"
-                      autoFocus
-                    />
+              <form onSubmit={handleSaveCustomPin} className="space-y-3 pt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700">Enter New 4-Digit PIN</label>
                     <button
                       type="button"
-                      onClick={() => setShowTextPassword(!showTextPassword)}
-                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700"
+                      onClick={() => setShowCustomPin(!showCustomPin)}
+                      className="text-[10px] text-emerald-800 font-medium hover:underline flex items-center gap-0.5"
                     >
-                      {showTextPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showCustomPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showCustomPin ? 'Hide' : 'Show'}</span>
                     </button>
                   </div>
-                  {errorMsg && <p className="text-xs font-semibold text-rose-600 text-center">{errorMsg}</p>}
+                  <input
+                    type={showCustomPin ? 'text' : 'password'}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="e.g. 5678"
+                    value={newCustomPin}
+                    onChange={(e) => {
+                      setNewCustomPin(e.target.value.replace(/\D/g, ''));
+                      setCustomPinError('');
+                    }}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-base font-mono font-bold tracking-widest text-center text-slate-900 focus:outline-none focus:border-emerald-600"
+                    autoFocus
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1 text-center">Numbers only (e.g. 4 to 6 digits)</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Confirm New PIN</label>
+                  <input
+                    type={showCustomPin ? 'text' : 'password'}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Re-type PIN to confirm"
+                    value={confirmCustomPin}
+                    onChange={(e) => {
+                      setConfirmCustomPin(e.target.value.replace(/\D/g, ''));
+                      setCustomPinError('');
+                    }}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-base font-mono font-bold tracking-widest text-center text-slate-900 focus:outline-none focus:border-emerald-600"
+                    required
+                  />
+                </div>
+
+                {customPinError && (
+                  <p className="text-xs font-semibold text-rose-600 text-center">{customPinError}</p>
+                )}
+
+                {customPinSuccess && (
+                  <div className="p-2 bg-emerald-100 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-900 text-center flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    <span>{customPinSuccess}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('switch')}
+                    className="flex-1 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    Back
+                  </button>
                   <button
                     type="submit"
-                    className="w-full h-9 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors"
+                    disabled={newCustomPin.length < 4 || newCustomPin !== confirmCustomPin}
+                    className="flex-2 h-9 bg-[#064e3b] hover:bg-[#085a44] disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5"
                   >
-                    Authenticate with Password
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Save My PIN</span>
                   </button>
-                </form>
-              ) : (
-                /* Numeric Keypad Mode */
-                <div className="space-y-2 pt-1">
-                  {/* PIN Display */}
-                  <div className="flex flex-col items-center justify-center space-y-1">
-                    <div className="flex items-center justify-center gap-2">
-                      {[0, 1, 2, 3].map((idx) => (
-                        <div
-                          key={idx}
-                          className={`w-8 h-9 rounded-lg border-2 flex items-center justify-center transition-all ${
-                            pin.length > idx
-                              ? 'border-emerald-600 bg-emerald-50 scale-105'
-                              : 'border-slate-200 bg-slate-50'
-                          }`}
-                        >
-                          {pin.length > idx ? (
-                            <div className="w-2.5 h-2.5 bg-emerald-800 rounded-full animate-in zoom-in-75 duration-100" />
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-
-                    {errorMsg ? (
-                      <p className="text-[11px] font-semibold text-rose-600 text-center">{errorMsg}</p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400">Enter 4-digit PIN (Default: 1234)</p>
-                    )}
-                  </div>
-
-                  {/* Numeric Keypad */}
-                  <div className="grid grid-cols-3 gap-1.5 max-w-[240px] mx-auto">
-                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                </div>
+              </form>
+            </div>
+          ) : (
+            /* ========================================================================= */
+            /* SWITCH PROFILE TAB                                                        */
+            /* ========================================================================= */
+            <>
+              {/* User selector cards */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+                  Select User Profile
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {approvedUsers.map((u) => {
+                    const isSelected = u.id === selectedUserId;
+                    const isCurrent = u.id === currentUser?.id;
+                    return (
                       <button
-                        key={digit}
-                        type="button"
-                        onClick={() => handleKeyClick(digit)}
-                        className="h-9 rounded-lg bg-slate-100 hover:bg-emerald-100/70 active:bg-emerald-200 text-slate-800 font-bold text-sm border border-slate-200/80 shadow-xs transition-colors flex items-center justify-center"
+                        key={u.id}
+                        onClick={() => {
+                          setSelectedUserId(u.id);
+                          setPin('');
+                          setTextPassword('');
+                          setErrorMsg('');
+                        }}
+                        className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all relative ${
+                          isSelected
+                            ? 'border-emerald-600 bg-emerald-50/80 shadow-xs ring-1 ring-emerald-500/30'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
                       >
-                        {digit}
+                        <div className={`w-8 h-8 rounded-full ${u.avatarColor} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs`}>
+                          {u.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-slate-900 truncate">{u.name}</p>
+                            {isCurrent && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" title="Active" />
+                            )}
+                          </div>
+                          <span className={`text-[9px] font-semibold px-1 py-0.2 rounded border uppercase inline-block mt-0.5 ${getRoleBadge(u.role)}`}>
+                            {u.role}
+                          </span>
+                        </div>
                       </button>
-                    ))}
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Target Banner */}
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                  <span className="text-xs text-slate-600">
+                    Selected: <strong className="text-slate-900">{activeTarget?.name || 'Staff User'}</strong>
+                  </span>
+                </div>
+                {isCurrentActiveUser ? (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-2 py-0.5 rounded-full">
+                    Active Session
+                  </span>
+                ) : requirePin ? (
+                  <span className="text-[10px] text-amber-700 font-mono font-bold bg-amber-100/80 border border-amber-300 px-2 py-0.5 rounded-full">
+                    PIN Verification
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100/80 border border-emerald-300 px-2 py-0.5 rounded-full">
+                    Quick Access
+                  </span>
+                )}
+              </div>
+
+              {/* If already active as this user: simply offer Dismiss / Continue */}
+              {isCurrentActiveUser ? (
+                <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-700" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">You are already signed in as {activeTarget?.name}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Your current terminal role is <strong className="text-emerald-800 font-bold">{activeTarget?.role}</strong>. No PIN verification is required.
+                    </p>
+                  </div>
+                  <div className="flex gap-2 justify-center pt-1">
                     <button
                       type="button"
-                      onClick={handleClear}
-                      className="h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs border border-slate-200 shadow-xs transition-colors flex items-center justify-center"
+                      onClick={onClose}
+                      className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
                     >
-                      Clear
+                      Continue Active Session
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleKeyClick('0')}
-                      className="h-9 rounded-lg bg-slate-100 hover:bg-emerald-100/70 active:bg-emerald-200 text-slate-800 font-bold text-sm border border-slate-200/80 shadow-xs transition-colors flex items-center justify-center"
+                      onClick={() => setModalTab('set_pin')}
+                      className="px-3 py-2 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
                     >
-                      0
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleBackspace}
-                      className="h-9 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-600 font-semibold text-xs border border-slate-200 shadow-xs transition-colors flex items-center justify-center"
-                    >
-                      Del
+                      <Key className="w-3.5 h-3.5" />
+                      <span>Set / Change My PIN</span>
                     </button>
                   </div>
                 </div>
+              ) : (
+                <>
+                  {/* One-Click Quick Switch (No PIN Required) */}
+                  <div className="p-3 bg-emerald-50/50 border border-emerald-200/80 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Instant Switch (No PIN Required)</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-700 font-medium">1-Click</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      Switch terminal operator to <strong>{activeTarget?.name}</strong> immediately without entering a passcode.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleQuickSwitchNoPin}
+                      className="w-full h-9 bg-[#064e3b] hover:bg-[#085a44] text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <span>Switch to {activeTarget?.name.split(' ')[0]} Now</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Security Hint & Default PIN Banner */}
+                  <div className="flex items-center justify-between p-2 bg-slate-100 border border-slate-200 rounded-lg text-[11px] text-slate-600">
+                    <span className="flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-slate-500" />
+                      <span>Default PIN: <strong className="text-slate-900 font-mono">1234</strong></span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleUseDefaultPin}
+                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-300 hover:bg-emerald-50 px-2 py-0.5 rounded transition-colors"
+                    >
+                      Fill Default 1234
+                    </button>
+                  </div>
+
+                  {/* Password Mode Toggle */}
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setUseTextPasswordMode(!useTextPasswordMode)}
+                      className="text-[11px] text-slate-500 hover:text-emerald-700 underline font-medium"
+                    >
+                      {useTextPasswordMode ? 'Use 4-digit keypad instead' : 'Enter account password instead'}
+                    </button>
+                    <span className="text-[10px] text-slate-400 font-mono">Master Code: {MASTER_PASSCODE}</span>
+                  </div>
+
+                  {/* Text Password Mode */}
+                  {useTextPasswordMode ? (
+                    <form onSubmit={handleTextPasswordSubmit} className="space-y-2 pt-1">
+                      <div className="relative">
+                        <input
+                          type={showTextPassword ? 'text' : 'password'}
+                          value={textPassword}
+                          onChange={(e) => setTextPassword(e.target.value)}
+                          placeholder="Enter account password or PIN"
+                          className="w-full h-10 px-3 pr-9 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowTextPassword(!showTextPassword)}
+                          className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700"
+                        >
+                          {showTextPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {errorMsg && <p className="text-xs font-semibold text-rose-600 text-center">{errorMsg}</p>}
+                      <button
+                        type="submit"
+                        className="w-full h-9 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors"
+                      >
+                        Authenticate with Password
+                      </button>
+                    </form>
+                  ) : (
+                    /* Numeric Keypad Mode */
+                    <div className="space-y-2 pt-1">
+                      {/* PIN Display */}
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="flex items-center justify-center gap-2">
+                          {[0, 1, 2, 3].map((idx) => (
+                            <div
+                              key={idx}
+                              className={`w-8 h-9 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                pin.length > idx
+                                  ? 'border-emerald-600 bg-emerald-50 scale-105'
+                                  : 'border-slate-200 bg-slate-50'
+                              }`}
+                            >
+                              {pin.length > idx ? (
+                                <div className="w-2.5 h-2.5 bg-emerald-800 rounded-full animate-in zoom-in-75 duration-100" />
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+
+                        {errorMsg ? (
+                          <p className="text-[11px] font-semibold text-rose-600 text-center">{errorMsg}</p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400">Enter 4-digit PIN (Default: 1234)</p>
+                        )}
+                      </div>
+
+                      {/* Numeric Keypad */}
+                      <div className="grid grid-cols-3 gap-1.5 max-w-[240px] mx-auto">
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                          <button
+                            key={digit}
+                            type="button"
+                            onClick={() => handleKeyClick(digit)}
+                            className="h-9 rounded-lg bg-slate-100 hover:bg-emerald-100/70 active:bg-emerald-200 text-slate-800 font-bold text-sm border border-slate-200/80 shadow-xs transition-colors flex items-center justify-center"
+                          >
+                            {digit}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={handleClear}
+                          className="h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs border border-slate-200 shadow-xs transition-colors flex items-center justify-center"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleKeyClick('0')}
+                          className="h-9 rounded-lg bg-slate-100 hover:bg-emerald-100/70 active:bg-emerald-200 text-slate-800 font-bold text-sm border border-slate-200/80 shadow-xs transition-colors flex items-center justify-center"
+                        >
+                          0
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBackspace}
+                          className="h-9 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-600 font-semibold text-xs border border-slate-200 shadow-xs transition-colors flex items-center justify-center"
+                        >
+                          Del
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Shortcut to Set Custom PIN */}
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('set_pin')}
+                      className="text-xs font-bold text-emerald-800 hover:text-emerald-900 inline-flex items-center gap-1 hover:underline"
+                    >
+                      <Key className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Want to set your own PIN? Click here</span>
+                    </button>
+                  </div>
+                </>
               )}
             </>
           )}

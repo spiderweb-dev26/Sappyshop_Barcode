@@ -12,6 +12,7 @@ import {
   Lock, 
   Unlock,
   Eye,
+  EyeOff,
   AlertCircle,
   Clock,
   ShieldAlert,
@@ -36,6 +37,7 @@ export const UserRoleManager: React.FC = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [resetPinUserId, setResetPinUserId] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
+  const [showResetPin, setShowResetPin] = useState(false);
 
   // Pending approval role overrides
   const [pendingRoleOverrides, setPendingRoleOverrides] = useState<Record<string, UserRole>>({});
@@ -109,6 +111,14 @@ export const UserRoleManager: React.FC = () => {
     e.preventDefault();
     if (!resetPinUserId || newPin.length < 4) return;
     const target = users.find(u => u.id === resetPinUserId);
+
+    // If changing your own PIN, or if you're the Admin managing staff PINs, apply directly!
+    if (resetPinUserId === currentUser.id || currentUser.role === 'ADMIN') {
+      updateUserPin(resetPinUserId, newPin);
+      setResetPinUserId(null);
+      setNewPin('');
+      return;
+    }
 
     requestMasterAuth({
       title: 'Staff PIN Reset Master Authorization',
@@ -350,17 +360,18 @@ export const UserRoleManager: React.FC = () => {
                             </span>
                           )}
 
-                          {/* Reset PIN */}
-                          {hasPermission(['ADMIN']) && (
+                          {/* Set / Change PIN */}
+                          {(hasPermission(['ADMIN']) || isCurrent) && (
                             <button
                               onClick={() => {
                                 setResetPinUserId(user.id);
                                 setNewPin('');
                               }}
-                              className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
-                              title="Reset 4-digit PIN"
+                              className="flex items-center gap-1 px-2 py-1 bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 rounded-md transition-colors text-[11px] font-semibold"
+                              title={isCurrent ? 'Set your own 4-digit PIN' : 'Set user 4-digit PIN'}
                             >
-                              <Key className="w-3.5 h-3.5" />
+                              <Key className="w-3 h-3 text-emerald-700" />
+                              <span>{isCurrent ? 'Change My PIN' : 'Set PIN'}</span>
                             </button>
                           )}
                         </>
@@ -587,11 +598,19 @@ export const UserRoleManager: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700">Enter New 4-Digit PIN</label>
-                  <span className="text-[10px] text-emerald-800 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">SHA-256 Encrypted</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPin(!showResetPin)}
+                    className="text-[10px] text-emerald-800 font-medium hover:underline flex items-center gap-1"
+                  >
+                    {showResetPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    <span>{showResetPin ? 'Hide' : 'Show'}</span>
+                  </button>
                 </div>
                 <input
-                  type="password"
-                  maxLength={4}
+                  type={showResetPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  maxLength={6}
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="&bull;&bull;&bull;&bull;"

@@ -18,7 +18,10 @@ import {
   ShieldCheck,
   Cloud,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
 import { MASTER_PASSCODE } from '../types';
 
@@ -38,10 +41,44 @@ export const SettingsView: React.FC = () => {
     requestMasterAuth,
     cloudSyncStatus,
     syncToCloudNow,
-    updateSettings
+    updateSettings,
+    currentUser,
+    updateUserPin
   } = useApp();
 
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Custom PIN Management
+  const [selectedUserForPin, setSelectedUserForPin] = useState<string>(currentUser?.id || '');
+  const [newPinValue, setNewPinValue] = useState<string>('');
+  const [confirmPinValue, setConfirmPinValue] = useState<string>('');
+  const [showPinValue, setShowPinValue] = useState<boolean>(false);
+  const [pinChangeError, setPinChangeError] = useState<string>('');
+  const [pinChangeSuccess, setPinChangeSuccess] = useState<string>('');
+
+  const handleSetUserPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinChangeError('');
+    setPinChangeSuccess('');
+    const clean = newPinValue.replace(/\D/g, '').trim();
+    const cleanConfirm = confirmPinValue.replace(/\D/g, '').trim();
+    if (clean.length < 4) {
+      setPinChangeError('PIN must be at least 4 digits (numbers 0-9).');
+      return;
+    }
+    if (clean !== cleanConfirm) {
+      setPinChangeError('PIN confirmation does not match. Please enter the same digits.');
+      return;
+    }
+
+    updateUserPin(selectedUserForPin, clean);
+    setNewPinValue('');
+    setConfirmPinValue('');
+    const target = users.find(u => u.id === selectedUserForPin);
+    const msg = `Security PIN for ${target?.name || 'User'} has been updated to ${clean} and saved!`;
+    setPinChangeSuccess(msg);
+    addToast('success', 'PIN Updated', msg);
+  };
 
   // Modals for Resets
   const [isFullResetModalOpen, setIsFullResetModalOpen] = useState(false);
@@ -287,6 +324,133 @@ export const SettingsView: React.FC = () => {
                 Staff PINs can be customized or reset by Administrators at any time under the <strong>Users</strong> tab.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Set Your Personal Access PIN Section */}
+        <div className="pt-3 border-t border-emerald-100">
+          <div className="bg-emerald-50/40 rounded-lg border border-emerald-200 p-3.5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-[#064e3b] text-white rounded-md">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
+                    Set Your Personal Access PIN
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Create or change your 4-digit security code for quick register switching.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-emerald-800 bg-white border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                <Lock className="w-3 h-3 text-emerald-700" />
+                SHA-256 Encrypted
+              </span>
+            </div>
+
+            <form onSubmit={handleSetUserPin} className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Account selector (defaults to current user) */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Account Profile
+                  </label>
+                  <select
+                    value={selectedUserForPin}
+                    onChange={(e) => {
+                      setSelectedUserForPin(e.target.value);
+                      setNewPinValue('');
+                      setConfirmPinValue('');
+                      setPinChangeError('');
+                      setPinChangeSuccess('');
+                    }}
+                    className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-600 shadow-xs"
+                  >
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.role}){u.id === currentUser?.id ? ' — [You]' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {selectedUserForPin === currentUser?.id ? 'Setting your own PIN' : 'Setting PIN for staff user'}
+                  </p>
+                </div>
+
+                {/* New PIN Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700">Enter New PIN</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPinValue(!showPinValue)}
+                      className="text-[10px] text-emerald-800 font-medium hover:underline flex items-center gap-0.5"
+                    >
+                      {showPinValue ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showPinValue ? 'Hide' : 'Show'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showPinValue ? 'text' : 'password'}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="e.g. 5678"
+                    value={newPinValue}
+                    onChange={(e) => {
+                      setNewPinValue(e.target.value.replace(/\D/g, ''));
+                      setPinChangeError('');
+                      setPinChangeSuccess('');
+                    }}
+                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-sm font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:border-emerald-600 shadow-xs placeholder:font-sans placeholder:text-xs placeholder:tracking-normal placeholder:text-slate-400"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">At least 4 digits (0-9)</p>
+                </div>
+
+                {/* Confirm & Save */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Confirm New PIN</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={showPinValue ? 'text' : 'password'}
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Confirm PIN"
+                      value={confirmPinValue}
+                      onChange={(e) => {
+                        setConfirmPinValue(e.target.value.replace(/\D/g, ''));
+                        setPinChangeError('');
+                        setPinChangeSuccess('');
+                      }}
+                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-sm font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:border-emerald-600 shadow-xs placeholder:font-sans placeholder:text-xs placeholder:tracking-normal placeholder:text-slate-400"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={newPinValue.length < 4 || newPinValue !== confirmPinValue}
+                      className="h-9 px-3.5 bg-[#064e3b] hover:bg-[#085a44] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-xs transition-colors shrink-0 flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Save PIN</span>
+                    </button>
+                  </div>
+                  {pinChangeError ? (
+                    <p className="text-[10px] font-semibold text-rose-600 mt-1">{pinChangeError}</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-500 mt-1">Re-enter to confirm match</p>
+                  )}
+                </div>
+              </div>
+
+              {pinChangeSuccess && (
+                <div className="p-2.5 bg-emerald-100/70 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-900 flex items-center gap-2 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>{pinChangeSuccess}</span>
+                </div>
+              )}
+            </form>
           </div>
         </div>
       </div>

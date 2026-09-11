@@ -938,6 +938,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return u;
     }));
+    setCurrentUser(prev => prev.id === userId ? { ...prev, pin: hashedPin } : prev);
     if (updatedUser) syncUserToCloud(updatedUser);
     addToast('success', 'PIN Encrypted & Updated', 'User access PIN has been encrypted and reset successfully.');
   }, [addToast]);

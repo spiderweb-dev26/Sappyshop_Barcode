@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserPinModal } from './UserPinModal';
 import { SappyLogoMark } from './SappyLogo';
+import { PWAInstallButton } from './PWAInstallButton';
 import { formatCurrency } from '../utils/currencyUtils';
 
 interface NavbarProps {
@@ -218,6 +219,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
+            {/* PWA Mobile & Desktop Install Button */}
+            <PWAInstallButton variant="compact" />
+
             {/* Cloud Firestore Status & Quick Sync Pill */}
             <button
               type="button"
@@ -298,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products, barcodes, SKUs..."
                 autoFocus
-                className="w-full h-10 pl-9 pr-10 bg-[#fdfbf7] border border-[#dfd7c7] rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#064e3b]"
+                className="w-full h-10 pl-9 pr-10 bg-[#fdfbf7] border border-[#dfd7c7] rounded-xl text-[16px] sm:text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#064e3b]"
               />
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <button

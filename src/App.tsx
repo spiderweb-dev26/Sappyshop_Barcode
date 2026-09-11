@@ -3,29 +3,38 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { DashboardOverview } from './components/DashboardOverview';
-import { InventoryList } from './components/InventoryList';
 import { POSRegister } from './components/POSRegister';
-import { BarcodeLabelGenerator } from './components/BarcodeLabelGenerator';
-import { SalesHistory } from './components/SalesHistory';
-import { CreditManagement } from './components/CreditManagement';
-import { ExpenseTracker } from './components/ExpenseTracker';
-import { ReportsCenter } from './components/ReportsCenter';
-import { UserRoleManager } from './components/UserRoleManager';
-import { AuditLogViewer } from './components/AuditLogViewer';
-import { SettingsView } from './components/SettingsView';
 import { CheckoutPage } from './components/CheckoutPage';
 import { AuthAnimationPage } from './components/AuthAnimationPage';
-import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { DuplicateScanModal } from './components/DuplicateScanModal';
-import { UserPinModal } from './components/UserPinModal';
 import { MasterPasscodeModal } from './components/MasterPasscodeModal';
 import { ToastContainer } from './components/ToastContainer';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { OfflineIndicator } from './components/OfflineIndicator';
+
+// Code-split heavy secondary components to minimize initial mobile bundle size
+const InventoryList = React.lazy(() => import('./components/InventoryList').then(m => ({ default: m.InventoryList })));
+const BarcodeLabelGenerator = React.lazy(() => import('./components/BarcodeLabelGenerator').then(m => ({ default: m.BarcodeLabelGenerator })));
+const SalesHistory = React.lazy(() => import('./components/SalesHistory').then(m => ({ default: m.SalesHistory })));
+const CreditManagement = React.lazy(() => import('./components/CreditManagement').then(m => ({ default: m.CreditManagement })));
+const ExpenseTracker = React.lazy(() => import('./components/ExpenseTracker').then(m => ({ default: m.ExpenseTracker })));
+const ReportsCenter = React.lazy(() => import('./components/ReportsCenter').then(m => ({ default: m.ReportsCenter })));
+const UserRoleManager = React.lazy(() => import('./components/UserRoleManager').then(m => ({ default: m.UserRoleManager })));
+const AuditLogViewer = React.lazy(() => import('./components/AuditLogViewer').then(m => ({ default: m.AuditLogViewer })));
+const SettingsView = React.lazy(() => import('./components/SettingsView').then(m => ({ default: m.SettingsView })));
+const BarcodeScannerModal = React.lazy(() => import('./components/BarcodeScannerModal').then(m => ({ default: m.BarcodeScannerModal })));
+
+const ModuleLoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center p-12 min-h-[300px] text-emerald-800">
+    <div className="w-9 h-9 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+    <span className="text-xs font-bold text-slate-500 mt-3 uppercase tracking-wider">Loading Module...</span>
+  </div>
+);
 
 const MainLayout: React.FC = () => {
   const { activeTab, isAuthenticated } = useApp();
@@ -46,27 +55,63 @@ const MainLayout: React.FC = () => {
       case 'dashboard':
         return <DashboardOverview />;
       case 'inventory':
-        return <InventoryList />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <InventoryList />
+          </Suspense>
+        );
       case 'pos':
         return <POSRegister />;
       case 'checkout':
         return <CheckoutPage />;
       case 'labels':
-        return <BarcodeLabelGenerator />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <BarcodeLabelGenerator />
+          </Suspense>
+        );
       case 'sales':
-        return <SalesHistory />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <SalesHistory />
+          </Suspense>
+        );
       case 'credit':
-        return <CreditManagement />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <CreditManagement />
+          </Suspense>
+        );
       case 'expenses':
-        return <ExpenseTracker />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <ExpenseTracker />
+          </Suspense>
+        );
       case 'reports':
-        return <ReportsCenter />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <ReportsCenter />
+          </Suspense>
+        );
       case 'users':
-        return <UserRoleManager />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <UserRoleManager />
+          </Suspense>
+        );
       case 'logs':
-        return <AuditLogViewer />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <AuditLogViewer />
+          </Suspense>
+        );
       case 'settings':
-        return <SettingsView />;
+        return (
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            <SettingsView />
+          </Suspense>
+        );
       default:
         return <DashboardOverview />;
     }
@@ -101,9 +146,14 @@ const MainLayout: React.FC = () => {
         isMobileSidebarOpen={isMobileSidebarOpen}
       />
 
+      {/* Offline Status Floating Pill */}
+      <OfflineIndicator />
+
       {/* Global Interactive Overlays */}
       <div className="print:hidden">
-        <BarcodeScannerModal />
+        <Suspense fallback={null}>
+          <BarcodeScannerModal />
+        </Suspense>
         <DuplicateScanModal />
         <MasterPasscodeModal />
         <ToastContainer />

@@ -185,7 +185,7 @@ export const DEFAULT_EMPTY_USER: User = {
   active: true,
 };
 
-// Purge legacy demo keys and force unauthenticated state on load
+// Purge legacy demo keys
 try {
   const legacyKeys = [
     'sappy_stationary_inventory_v1_sales',
@@ -196,8 +196,7 @@ try {
     'sappy_stationary_inventory_v1_current_user_id',
     'sappy_stationary_inventory_v1_is_authenticated',
     'sappy_stationary_inventory_v1_items',
-    'sappy_stationary_inventory_v1_settings',
-    `${LOCAL_STORAGE_KEY}_is_authenticated`
+    'sappy_stationary_inventory_v1_settings'
   ];
   legacyKeys.forEach(k => localStorage.removeItem(k));
 } catch {
@@ -254,15 +253,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Strict Authentication Security:
-  // Fresh loads and new visitors MUST ALWAYS see the login screen first.
+  // Fast session restore: preserves login on mobile reload/tab switch
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
+      const savedAuth = localStorage.getItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
+      return savedAuth === 'true';
     } catch {
-      // ignore
+      return false;
     }
-    return false;
   });
 
   const [sales, setSales] = useState<SaleRecord[]>(() => {
@@ -522,7 +520,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      if (!isAuthenticated) {
+      if (isAuthenticated) {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, 'true');
+      } else {
         localStorage.removeItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
       }
     } catch { /* ignore */ }

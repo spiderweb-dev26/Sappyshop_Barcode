@@ -20,21 +20,39 @@ interface LoginBackgroundProps {
   onQuickFill?: (email: string, pin: string) => void;
 }
 
-export const LoginBackground: React.FC<LoginBackgroundProps> = ({ children, onQuickFill }) => {
-  const { users } = useApp();
-  const [currentTime, setCurrentTime] = useState<string>('');
-  const [currentDate, setCurrentDate] = useState<string>('');
+const LiveClock: React.FC = React.memo(() => {
+  const [time, setTime] = useState(() => {
+    const now = new Date();
+    return {
+      timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      dateStr: now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+    };
+  });
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-      setCurrentDate(now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
+      setTime({
+        timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        dateStr: now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+      });
     };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
+    // Update every 30 seconds rather than 1 second to save mobile CPU/battery
+    const interval = setInterval(updateTime, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  return (
+    <div className="hidden sm:flex items-center gap-2 text-emerald-200/70 text-[11px] px-3 py-1 rounded-lg bg-white/5 border border-white/10">
+      <Clock className="w-3.5 h-3.5 text-emerald-400" />
+      <span>{time.dateStr}</span>
+      <span className="text-emerald-400 font-bold">{time.timeStr}</span>
+    </div>
+  );
+});
+
+export const LoginBackground: React.FC<LoginBackgroundProps> = ({ children, onQuickFill }) => {
+  const { users } = useApp();
 
   return (
     <div className="min-h-screen w-full relative bg-[#04130e] text-slate-100 flex flex-col justify-between overflow-x-hidden font-sans selection:bg-emerald-500 selection:text-slate-950">
@@ -120,11 +138,7 @@ export const LoginBackground: React.FC<LoginBackgroundProps> = ({ children, onQu
             <span className="text-[11px] font-bold">SYSTEM ONLINE</span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-emerald-200/70 text-[11px] px-3 py-1 rounded-lg bg-white/5 border border-white/10">
-            <Clock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{currentDate}</span>
-            <span className="text-emerald-400 font-bold">{currentTime}</span>
-          </div>
+          <LiveClock />
         </div>
       </header>
 

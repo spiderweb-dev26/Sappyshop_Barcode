@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { InventoryItem, PaymentMethod, SaleRecord, getPaymentMethodLabel } from '../types';
 import { 
@@ -72,21 +72,32 @@ export const POSRegister: React.FC = () => {
   const barcodeInputRef = useRef<HTMLInputElement | null>(null);
 
   // Categories
-  const categories = Array.from(new Set(items.map(i => i.category))).filter(Boolean);
+  const categories = useMemo(() => {
+    return Array.from(new Set(items.map(i => i.category))).filter(Boolean);
+  }, [items]);
 
-  // Filter items
-  const filteredItems = items.filter(item => {
-    const matchesSearch = 
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.sku.toLowerCase().includes(search.toLowerCase()) ||
-      item.barcode.includes(search);
-    const matchesCat = selectedCat === 'ALL' || item.category === selectedCat;
-    return matchesSearch && matchesCat;
-  });
+  // Filter items memoized for responsive mobile typing
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter(item => {
+      const matchesSearch = 
+        !q ||
+        (item.name || '').toLowerCase().includes(q) ||
+        (item.sku || '').toLowerCase().includes(q) ||
+        (item.barcode || '').includes(q);
+      const matchesCat = selectedCat === 'ALL' || item.category === selectedCat;
+      return matchesSearch && matchesCat;
+    });
+  }, [items, search, selectedCat]);
 
   // Calculate totals (No taxes)
-  const subtotal = cart.reduce((acc, c) => acc + (c.unitPrice * c.quantity), 0);
-  const grandTotal = Math.max(0, subtotal - discountAmount);
+  const subtotal = useMemo(() => {
+    return cart.reduce((acc, c) => acc + (c.unitPrice * c.quantity), 0);
+  }, [cart]);
+
+  const grandTotal = useMemo(() => {
+    return Math.max(0, subtotal - discountAmount);
+  }, [subtotal, discountAmount]);
   const taxAmount = 0;
 
   // Paid cash calculations
@@ -273,11 +284,11 @@ export const POSRegister: React.FC = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Scan barcode, type SKU or product title to add directly..."
-                className="w-full h-8 pl-9 pr-20 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                className="w-full h-10 sm:h-8 pl-9 pr-24 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-md text-[16px] sm:text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
               />
               <button
                 type="submit"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 sm:h-6 px-3 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg sm:rounded text-xs sm:text-[11px] font-semibold"
               >
                 Find & Add
               </button>
@@ -415,20 +426,24 @@ export const POSRegister: React.FC = () => {
                   {/* Quantity Stepper */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
+                      type="button"
                       onClick={() => updateCartQuantity(item.id, quantity - 1)}
-                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold"
+                      className="w-9 h-9 sm:w-7 sm:h-7 rounded-xl sm:rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-90 text-slate-700 flex items-center justify-center font-bold touch-manipulation transition-transform"
+                      aria-label="Decrease quantity"
                     >
-                      <Minus className="w-3 h-3" />
+                      <Minus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
                     </button>
-                    <span className="w-7 text-center font-bold font-mono text-slate-900">
+                    <span className="w-7 text-center font-bold font-mono text-slate-900 text-xs sm:text-xs">
                       {quantity}
                     </span>
                     <button
+                      type="button"
                       onClick={() => updateCartQuantity(item.id, quantity + 1)}
                       disabled={quantity >= item.stock}
-                      className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 flex items-center justify-center font-bold"
+                      className="w-9 h-9 sm:w-7 sm:h-7 rounded-xl sm:rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-90 disabled:opacity-40 text-slate-700 flex items-center justify-center font-bold touch-manipulation transition-transform"
+                      aria-label="Increase quantity"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
                     </button>
                   </div>
 
@@ -499,7 +514,7 @@ export const POSRegister: React.FC = () => {
 
       {/* Mobile Floating Checkout Bar when items exist in cart and user is browsing catalog */}
       {cart.length > 0 && mobileTab === 'catalog' && (
-        <div className="lg:hidden fixed bottom-16 left-3 right-3 z-30 bg-[#064e3b] text-white p-3 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center justify-between animate-in slide-in-from-bottom-3">
+        <div className="lg:hidden fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 bg-[#064e3b] text-white p-3 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center justify-between animate-in slide-in-from-bottom-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-emerald-400 text-[#064e3b] flex items-center justify-center font-black font-mono text-xs">
               {cart.reduce((acc, c) => acc + c.quantity, 0)}

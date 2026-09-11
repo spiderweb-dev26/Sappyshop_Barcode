@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { SappyLogoMark } from './SappyLogo';
 import { UserPinModal } from './UserPinModal';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -224,6 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom User Card & Logout in Sidebar */}
       <div className="mt-4 pt-3 border-t border-emerald-800/80 space-y-2">
+        <PWAInstallButton variant="banner" />
         <div className="p-2 rounded-2xl bg-[#043b2c] border border-emerald-800/60 flex items-center justify-between gap-2">
           <button
             onClick={() => {

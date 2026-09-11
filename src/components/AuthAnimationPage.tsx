@@ -266,7 +266,7 @@ export const AuthAnimationPage: React.FC = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Sarah Jenkins"
-                        className="w-full bg-transparent border-b border-slate-300 focus:border-[#064e3b] pb-2 pt-1 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none transition-colors pr-8"
+                        className="w-full bg-transparent border-b border-slate-300 focus:border-[#064e3b] pb-2 pt-1 text-[16px] sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none transition-colors pr-8"
                       />
                       <UserIcon className="w-4 h-4 text-slate-400 absolute right-1 top-2" />
                     </div>
@@ -284,7 +284,7 @@ export const AuthAnimationPage: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={authMode === 'signup' ? 'name@sappypos.com' : 'Enter email or name'}
-                      className="w-full bg-transparent border-b border-slate-300 focus:border-[#064e3b] pb-2 pt-1 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none transition-colors pr-8"
+                      className="w-full bg-transparent border-b border-slate-300 focus:border-[#064e3b] pb-2 pt-1 text-[16px] sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none transition-colors pr-8"
                     />
                     <Mail className="w-4 h-4 text-slate-400 absolute right-1 top-2" />
                   </div>
@@ -315,7 +315,7 @@ export const AuthAnimationPage: React.FC = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-transparent border-b border-slate-300 focus:border-[#064e3b] pb-2 pt-1 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none transition-colors pr-8 tracking-wider"
+                      className="w-full bg-transparent border-b border-slate-300 focus:border-[#064e3b] pb-2 pt-1 text-[16px] sm:text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none transition-colors pr-8 tracking-wider"
                     />
                     <button
                       type="button"

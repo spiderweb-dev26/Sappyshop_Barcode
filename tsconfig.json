@@ -23,6 +23,7 @@
     },
     "types": [
       "vite/client",
+      "vite-plugin-pwa/client",
       "node"
     ],
     "allowImportingTsExtensions": true,

@@ -51,11 +51,12 @@ import {
   isHashed 
 } from '../utils/security';
 
-interface ToastNotification {
+export interface ToastNotification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   title: string;
   message?: string;
+  imageUrl?: string;
   timestamp: number;
 }
 
@@ -89,6 +90,8 @@ interface AppContextType {
   cart: CartItem[];
   toasts: ToastNotification[];
   lastScannedBarcode: string | null;
+  lastScannedItem: { item: InventoryItem; timestamp: number } | null;
+  clearLastScannedItem: () => void;
   isScannerModalOpen: boolean;
   setIsScannerModalOpen: (open: boolean) => void;
   masterAuthRequest: MasterAuthRequest | null;
@@ -162,7 +165,7 @@ interface AppContextType {
   // Settings & System Actions
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   logActivity: (actionType: ActionType, entityType: ActivityLog['entityType'], entityId?: string, details?: string, metadata?: Record<string, unknown>) => void;
-  addToast: (type: ToastNotification['type'], title: string, message?: string) => void;
+  addToast: (type: ToastNotification['type'], title: string, message?: string, imageUrl?: string) => void;
   removeToast: (id: string) => void;
   resetAllDataToSample: () => void;
   fullResetSystem: () => void;
@@ -359,9 +362,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   // Toast Helper
-  const addToast = useCallback((type: ToastNotification['type'], title: string, message?: string) => {
+  const addToast = useCallback((type: ToastNotification['type'], title: string, message?: string, imageUrl?: string) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
-    setToasts(prev => [...prev.slice(-4), { id, type, title, message, timestamp: Date.now() }]);
+    setToasts(prev => [...prev.slice(-4), { id, type, title, message, imageUrl, timestamp: Date.now() }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4500);
@@ -372,6 +375,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
+  const [lastScannedItem, setLastScannedItem] = useState<{ item: InventoryItem; timestamp: number } | null>(null);
+  const clearLastScannedItem = useCallback(() => {
+    setLastScannedItem(null);
+  }, []);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
   const [pendingDuplicateScan, setPendingDuplicateScan] = useState<{ item: InventoryItem; currentQuantity: number } | null>(null);
   const [masterAuthRequest, setMasterAuthRequest] = useState<MasterAuthRequest | null>(null);
@@ -1414,6 +1421,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (matchedItem) {
+      setLastScannedItem({ item: matchedItem, timestamp: Date.now() });
+
       if (activeTab === 'pos' || activeTab === 'checkout') {
         // Check if item is already in cart
         const existingInCart = cart.find(c => c.item.id === matchedItem.id);
@@ -1425,10 +1434,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         addToCart(matchedItem, 1);
-        addToast('success', 'Item Scanned', `Added ${matchedItem.name} to cart.`);
+        addToast(
+          'success', 
+          `Scanned: ${matchedItem.name}`, 
+          `SKU: ${matchedItem.sku} | ${formatCurrency(matchedItem.sellingPrice, settings.currencySymbol)}`,
+          matchedItem.imageUrl
+        );
       } else {
         if (settings.enableSoundEffects) soundEffects.playScanSuccess();
-        addToast('info', `Found: ${matchedItem.name}`, `SKU: ${matchedItem.sku} | Stock: ${matchedItem.stock} | Price: ${formatCurrency(matchedItem.sellingPrice, settings.currencySymbol)}`);
+        addToast(
+          'info', 
+          `Found: ${matchedItem.name}`, 
+          `SKU: ${matchedItem.sku} | Stock: ${matchedItem.stock} | Price: ${formatCurrency(matchedItem.sellingPrice, settings.currencySymbol)}`,
+          matchedItem.imageUrl
+        );
       }
       return true;
     } else {
@@ -1709,6 +1728,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cart,
         toasts,
         lastScannedBarcode,
+        lastScannedItem,
+        clearLastScannedItem,
         isScannerModalOpen,
         setIsScannerModalOpen,
         masterAuthRequest,

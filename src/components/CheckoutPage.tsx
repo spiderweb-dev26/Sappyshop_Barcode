@@ -27,7 +27,8 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Package
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -519,6 +520,20 @@ export const CheckoutPage: React.FC = () => {
                 const lineTotal = unitPrice * quantity;
                 return (
                   <div key={item.id} className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors">
+                    {/* Item Image Thumbnail */}
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <Package className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold uppercase">

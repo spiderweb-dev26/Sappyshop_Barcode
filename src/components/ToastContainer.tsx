@@ -30,18 +30,29 @@ export const ToastContainer: React.FC = () => {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-xl backdrop-blur-md ${bg}`}
+              className={`pointer-events-auto flex items-center gap-3 p-3 sm:p-3.5 rounded-xl border shadow-xl backdrop-blur-md ${bg}`}
             >
-              {icon}
-              <div className="flex-1 text-sm">
-                <p className="font-semibold leading-tight">{toast.title}</p>
+              {toast.imageUrl ? (
+                <div className="w-12 h-12 rounded-lg bg-white/10 p-0.5 border border-white/20 shrink-0 overflow-hidden flex items-center justify-center shadow-inner">
+                  <img
+                    src={toast.imageUrl}
+                    alt={toast.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                icon
+              )}
+              <div className="flex-1 text-sm min-w-0">
+                <p className="font-semibold leading-tight truncate">{toast.title}</p>
                 {toast.message && (
-                  <p className="text-xs opacity-90 mt-0.5 leading-relaxed">{toast.message}</p>
+                  <p className="text-xs opacity-90 mt-0.5 leading-relaxed line-clamp-2">{toast.message}</p>
                 )}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-white transition-colors p-0.5 rounded"
+                className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-white/10 shrink-0"
                 title="Dismiss"
               >
                 <X className="w-4 h-4" />

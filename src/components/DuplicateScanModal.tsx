@@ -58,14 +58,32 @@ export const DuplicateScanModal: React.FC = () => {
         <div className="p-5 space-y-4">
           {/* Product Details Card */}
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{item.category}</p>
-                <h4 className="font-bold text-base text-slate-900 leading-snug">{item.name}</h4>
+            <div className="flex items-start gap-3">
+              {/* Product Image */}
+              <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center shadow-xs">
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-contain p-1"
+                  />
+                ) : (
+                  <Package className="w-6 h-6 text-slate-400" />
+                )}
               </div>
-              <span className="font-bold text-sm text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
-                {formatCurrency(item.sellingPrice, settings.currencySymbol)}
-              </span>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{item.category}</p>
+                    <h4 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">{item.name}</h4>
+                  </div>
+                  <span className="font-bold text-sm text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
+                    {formatCurrency(item.sellingPrice, settings.currencySymbol)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 text-xs text-slate-500 font-mono pt-1 border-t border-slate-200/60">

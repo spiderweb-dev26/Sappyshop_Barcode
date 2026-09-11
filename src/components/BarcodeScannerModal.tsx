@@ -694,20 +694,46 @@ export const BarcodeScannerModal: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-start justify-between gap-2.5 bg-slate-900/80 p-2.5 rounded-lg border border-emerald-500/20">
+                  <div className="flex items-center gap-3 bg-slate-900/90 p-3 rounded-xl border border-emerald-500/30">
+                    {/* Scanned Product Photo */}
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-950 border border-emerald-500/50 shrink-0 overflow-hidden flex items-center justify-center shadow-lg">
+                      {scanResult.item.imageUrl ? (
+                        <img
+                          src={scanResult.item.imageUrl}
+                          alt={scanResult.item.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-500 p-1 text-center">
+                          <Package className="w-6 h-6 text-emerald-400/80" />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5 truncate max-w-[54px]">{scanResult.item.category}</span>
+                        </div>
+                      )}
+                      <span className="absolute bottom-0 inset-x-0 bg-emerald-950/90 text-emerald-300 text-[8px] font-bold text-center py-0.5 uppercase tracking-wider border-t border-emerald-500/30">
+                        Verified
+                      </span>
+                    </div>
+
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-sm sm:text-base text-white truncate">
-                        {scanResult.item.name}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-slate-400 font-mono">
-                        <span className="bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] uppercase font-bold text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                          {scanResult.item.category}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
                           SKU: {scanResult.item.sku}
                         </span>
-                        <span className="bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
-                          Stock: {scanResult.item.stock}
-                        </span>
-                        <span className="text-emerald-400 font-semibold">
+                      </div>
+                      <h4 className="font-bold text-sm sm:text-base text-white truncate mt-1">
+                        {scanResult.item.name}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
+                        <span className="text-emerald-400 font-bold">
                           {formatCurrency(scanResult.item.sellingPrice, settings.currencySymbol)}/ea
+                        </span>
+                        <span>&bull;</span>
+                        <span className="text-slate-400">
+                          Stock: {scanResult.item.stock}
                         </span>
                       </div>
                     </div>
@@ -787,13 +813,31 @@ export const BarcodeScannerModal: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="bg-slate-900/80 p-2.5 rounded-lg border border-amber-500/20">
-                    <h4 className="font-bold text-sm text-white truncate">
-                      {scanResult.item.name}
-                    </h4>
-                    <p className="text-xs text-amber-300/90 mt-0.5">
-                      Already has <strong>{scanResult.currentQty} unit{scanResult.currentQty !== 1 ? 's' : ''}</strong> in cart ({formatCurrency(scanResult.item.sellingPrice * scanResult.currentQty, settings.currencySymbol)}).
-                    </p>
+                  <div className="flex items-center gap-3 bg-slate-900/90 p-3 rounded-xl border border-amber-500/30">
+                    {/* Duplicate Scanned Product Photo */}
+                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-950 border border-amber-500/50 shrink-0 overflow-hidden flex items-center justify-center shadow-lg">
+                      {scanResult.item.imageUrl ? (
+                        <img
+                          src={scanResult.item.imageUrl}
+                          alt={scanResult.item.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-500 p-1">
+                          <Package className="w-5 h-5 text-amber-400/80" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-white truncate">
+                        {scanResult.item.name}
+                      </h4>
+                      <p className="text-xs text-amber-300/90 mt-0.5">
+                        Already has <strong>{scanResult.currentQty} unit{scanResult.currentQty !== 1 ? 's' : ''}</strong> in cart ({formatCurrency(scanResult.item.sellingPrice * scanResult.currentQty, settings.currencySymbol)}).
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-0.5">
@@ -893,22 +937,36 @@ export const BarcodeScannerModal: React.FC = () => {
                           : 'bg-slate-900/90 hover:bg-slate-900 border-slate-800'
                       }`}
                     >
-                      {/* Left: Product Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-xs sm:text-sm text-white truncate max-w-[160px] sm:max-w-[220px]">
-                            {item.name}
-                          </p>
-                          {isJustScanned && (
-                            <span className="text-[9px] bg-emerald-500 text-slate-950 font-extrabold px-1.5 py-0.2 rounded-full uppercase">
-                              Active
-                            </span>
+                      {/* Left: Product Thumbnail & Info */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 shrink-0 overflow-hidden flex items-center justify-center">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain p-0.5"
+                            />
+                          ) : (
+                            <Package className="w-4 h-4 text-slate-600" />
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-mono">
-                          <span>{item.sku}</span>
-                          <span>&bull;</span>
-                          <span className="text-emerald-400 font-semibold">{formatCurrency(item.sellingPrice, settings.currencySymbol)}/ea</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-xs sm:text-sm text-white truncate max-w-[140px] sm:max-w-[200px]">
+                              {item.name}
+                            </p>
+                            {isJustScanned && (
+                              <span className="text-[9px] bg-emerald-500 text-slate-950 font-extrabold px-1.5 py-0.2 rounded-full uppercase">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-mono">
+                            <span>{item.sku}</span>
+                            <span>&bull;</span>
+                            <span className="text-emerald-400 font-semibold">{formatCurrency(item.sellingPrice, settings.currencySymbol)}/ea</span>
+                          </div>
                         </div>
                       </div>
 

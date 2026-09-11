@@ -24,7 +24,8 @@ import {
   Sparkles,
   Check,
   ArrowRight,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Package
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -54,7 +55,9 @@ export const POSRegister: React.FC = () => {
     setIsScannerModalOpen,
     currentUser,
     handleBarcodeScanned,
-    setActiveTab
+    setActiveTab,
+    lastScannedItem,
+    clearLastScannedItem
   } = useApp();
 
   const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
@@ -270,6 +273,76 @@ export const POSRegister: React.FC = () => {
           )}
         </button>
       </div>
+
+      {/* Recently Scanned Barcode Product Banner */}
+      {lastScannedItem && (
+        <div className="bg-emerald-950 text-white rounded-2xl p-3 sm:p-3.5 border-2 border-emerald-500/70 shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Product Image */}
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-900 border border-emerald-500/40 shrink-0 overflow-hidden flex items-center justify-center relative shadow-inner">
+              {lastScannedItem.item.imageUrl ? (
+                <img
+                  src={lastScannedItem.item.imageUrl}
+                  alt={lastScannedItem.item.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain p-1"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-400 p-1">
+                  <Package className="w-5 h-5 text-emerald-400" />
+                  <span className="text-[8px] font-bold text-slate-400 truncate max-w-[44px]">{lastScannedItem.item.category}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[9px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full tracking-wider flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-slate-950" /> Just Scanned
+                </span>
+                <span className="text-[11px] text-emerald-300 font-mono font-bold">
+                  {lastScannedItem.item.sku}
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+                  &bull; Barcode: {lastScannedItem.item.barcode}
+                </span>
+              </div>
+              <h4 className="font-bold text-sm sm:text-base text-white truncate mt-1">
+                {lastScannedItem.item.name}
+              </h4>
+              <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-300 font-mono">
+                <span className="text-emerald-400 font-extrabold">
+                  {formatCurrency(lastScannedItem.item.sellingPrice, settings.currencySymbol)}
+                </span>
+                <span>&bull;</span>
+                <span className="text-slate-300">
+                  Cart: <strong className="text-white">{cart.find(c => c.item.id === lastScannedItem.item.id)?.quantity || 1} units</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => addToCart(lastScannedItem.item, 1)}
+              className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors active:scale-95 cursor-pointer shadow-sm"
+              title="Add another unit to cart"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Add +1</span>
+            </button>
+            <button
+              type="button"
+              onClick={clearLastScannedItem}
+              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Split Interface */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

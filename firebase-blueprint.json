@@ -16,6 +16,7 @@
         "minStockAlert": { "type": "number" },
         "description": { "type": "string" },
         "unit": { "type": "string" },
+        "imageUrl": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
       "required": ["name", "price", "stock"]

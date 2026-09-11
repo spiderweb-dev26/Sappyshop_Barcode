@@ -20,8 +20,12 @@ import {
   Sparkles, 
   Layers,
   Printer,
-  Boxes
+  Boxes,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
+import { ItemImageUploader } from './ItemImageUploader';
+import { QuickImageModal } from './QuickImageModal';
 import { BarcodeRenderer } from './BarcodeRenderer';
 import { 
   downloadExcelTemplate, 
@@ -62,6 +66,7 @@ export const InventoryList: React.FC = () => {
   const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [barcodePreviewItem, setBarcodePreviewItem] = useState<InventoryItem | null>(null);
+  const [quickImageItem, setQuickImageItem] = useState<InventoryItem | null>(null);
 
   // Stock Adjust form state
   const [adjustQty, setAdjustQty] = useState<number>(0);
@@ -362,6 +367,7 @@ export const InventoryList: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/50 text-slate-500 font-bold border-b border-slate-100 text-[11px] uppercase">
+                <th className="py-2.5 px-3 w-14 text-center">Photo</th>
                 <th className="py-2.5 px-4">SKU / Barcode</th>
                 <th className="py-2.5 px-4">Product Name</th>
                 <th className="py-2.5 px-4">Category</th>
@@ -376,7 +382,7 @@ export const InventoryList: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                  <td colSpan={10} className="py-12 text-center text-slate-400">
                     <Boxes className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">No matching products found</p>
                     <p className="text-[11px] mt-0.5">Try refining your search terms or filters.</p>
@@ -391,6 +397,37 @@ export const InventoryList: React.FC = () => {
 
                   return (
                     <tr key={item.id} className="hover:bg-emerald-50/30 transition-colors group">
+                      {/* Item Photo / Thumbnail */}
+                      <td className="py-2.5 px-3 text-center">
+                        {item.imageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setQuickImageItem(item)}
+                            className="relative group/thumb w-10 h-10 mx-auto rounded-lg overflow-hidden border border-slate-200 bg-white hover:ring-2 hover:ring-emerald-500 transition-all shadow-2xs block"
+                            title="Click to change or view photo"
+                          >
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain p-0.5"
+                            />
+                            <span className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
+                              Edit
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setQuickImageItem(item)}
+                            className="w-10 h-10 mx-auto rounded-lg border border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/60 text-slate-400 hover:text-emerald-700 transition-all flex flex-col items-center justify-center group/btn"
+                            title="Add photo for this item"
+                          >
+                            <Camera className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                          </button>
+                        )}
+                      </td>
+
                       {/* SKU & Barcode */}
                       <td className="py-3 px-4">
                         <div className="font-mono font-bold text-slate-900">{item.sku}</div>
@@ -540,6 +577,18 @@ export const InventoryList: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* QUICK PHOTO MODAL */}
+      {/* ========================================================================= */}
+      <QuickImageModal
+        item={quickImageItem}
+        isOpen={!!quickImageItem}
+        onClose={() => setQuickImageItem(null)}
+        onSaveImage={(itemId, newImageUrl) => {
+          updateItem(itemId, { imageUrl: newImageUrl });
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* ADD / EDIT ITEM MODAL */}
@@ -1020,6 +1069,11 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
   const [stock, setStock] = useState(initialItem?.stock?.toString() || '10');
   const [location, setLocation] = useState(initialItem?.location || '');
   const [description, setDescription] = useState(initialItem?.description || '');
+  const [imageUrl, setImageUrl] = useState<string | undefined>(initialItem?.imageUrl);
+
+  React.useEffect(() => {
+    setImageUrl(initialItem?.imageUrl);
+  }, [initialItem]);
 
   if (!isOpen) return null;
 
@@ -1054,6 +1108,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
       minStockAlert: 5,
       location: location.trim() || undefined,
       description: description.trim() || undefined,
+      imageUrl: imageUrl || undefined,
     });
   };
 
@@ -1260,6 +1315,14 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
               </div>
             </div>
           </div>
+
+          {/* Product Image / Photo Upload */}
+          <ItemImageUploader
+            value={imageUrl}
+            onChange={setImageUrl}
+            itemName={name || 'Stationery Item'}
+            itemCategory={category}
+          />
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-700">Product Notes & Description (Optional)</label>

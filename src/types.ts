@@ -46,6 +46,7 @@ export interface InventoryItem {
   batchNumber?: string;
   expiryDate?: string;
   description?: string;
+  imageUrl?: string; // Product photo (data URL or web URL)
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +64,7 @@ export interface SaleItem {
   barcode: string;
   name: string;
   category: string;
+  imageUrl?: string;
   unitPrice: number;
   costPrice: number;
   quantity: number;

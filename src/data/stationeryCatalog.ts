@@ -257,11 +257,31 @@ export const SAPPY_STATIONERY_CATALOG: Omit<InventoryItem, 'id' | 'createdAt' | 
   { name: 'Large Capacity HY803 (Black)', category: 'Pen', sellingPrice: 45, costPrice: 0, stock: 10, unit: 'Pcs', minStockAlert: 5, sku: 'PEN-1243', barcode: '8901234560243' }
 ];
 
+const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
+  'Paint': 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=400&q=80',
+  'Colors': 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=400&q=80',
+  'Notebooks': 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+  'Notebook': 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+  'Pen': 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?auto=format&fit=crop&w=400&q=80',
+  'Highlighter': 'https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?auto=format&fit=crop&w=400&q=80',
+  'Marker': 'https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?auto=format&fit=crop&w=400&q=80',
+  'Ruler': 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=400&q=80',
+  'Scissor': 'https://images.unsplash.com/photo-1590845947670-c009801fee74?auto=format&fit=crop&w=400&q=80',
+  'Cutter': 'https://images.unsplash.com/photo-1590845947670-c009801fee74?auto=format&fit=crop&w=400&q=80',
+  'Adhesives': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80',
+  'Tape': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80',
+  'File Album': 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=400&q=80',
+  'Kids Material': 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=400&q=80',
+  'Kids': 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=400&q=80',
+  'Exercise Book': 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+};
+
 export function getFullStationeryCatalog(): InventoryItem[] {
   const timestamp = new Date().toISOString();
   return SAPPY_STATIONERY_CATALOG.map((item, idx) => ({
     ...item,
     id: `item-etb-${String(idx + 1).padStart(3, '0')}`,
+    imageUrl: item.imageUrl || CATEGORY_DEFAULT_IMAGES[item.category] || undefined,
     createdAt: timestamp,
     updatedAt: timestamp
   }));

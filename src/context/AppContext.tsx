@@ -215,7 +215,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_items`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: InventoryItem) => ({
+            ...item,
+            imageUrl: item.imageUrl !== undefined ? item.imageUrl : (INITIAL_ITEMS.find(i => i.id === item.id || i.sku === item.sku)?.imageUrl || undefined)
+          }));
+        }
       }
       return INITIAL_ITEMS;
     } catch {
@@ -1114,6 +1119,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         batchNumber: raw.batchNumber,
         expiryDate: raw.expiryDate,
         description: raw.description,
+        imageUrl: raw.imageUrl,
         createdAt: raw.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

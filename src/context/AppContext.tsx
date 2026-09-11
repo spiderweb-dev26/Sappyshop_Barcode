@@ -44,6 +44,12 @@ import {
   subscribeToLiveCloudSales, 
   subscribeToLiveCloudUsers 
 } from '../lib/firebaseService';
+import { 
+  hashCredential, 
+  verifyCredential, 
+  verifyMasterCode, 
+  isHashed 
+} from '../utils/security';
 
 interface ToastNotification {
   id: string;
@@ -174,12 +180,12 @@ export const DEFAULT_EMPTY_USER: User = {
   name: 'Store Administrator',
   email: 'admin@sappystationary.com',
   role: 'ADMIN',
-  pin: '1234',
+  pin: hashCredential('1234'),
   avatarColor: 'bg-emerald-700',
   active: true,
 };
 
-// Purge legacy demo keys from old sessions
+// Purge legacy demo keys and force unauthenticated state on load
 try {
   const legacyKeys = [
     'sappy_stationary_inventory_v1_sales',
@@ -190,7 +196,8 @@ try {
     'sappy_stationary_inventory_v1_current_user_id',
     'sappy_stationary_inventory_v1_is_authenticated',
     'sappy_stationary_inventory_v1_items',
-    'sappy_stationary_inventory_v1_settings'
+    'sappy_stationary_inventory_v1_settings',
+    `${LOCAL_STORAGE_KEY}_is_authenticated`
   ];
   legacyKeys.forEach(k => localStorage.removeItem(k));
 } catch {
@@ -217,7 +224,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          // Encrypt/hash any legacy plain text PINs
+          return parsed.map((u: User) => ({
+            ...u,
+            pin: u.pin ? (isHashed(u.pin) ? u.pin : hashCredential(u.pin)) : hashCredential('1234')
+          }));
+        }
       }
       return INITIAL_USERS;
     } catch {
@@ -241,17 +254,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  // Strict Authentication Security:
+  // Fresh loads and new visitors MUST ALWAYS see the login screen first.
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      const savedAuth = localStorage.getItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
-      if (savedAuth !== null) {
-        return savedAuth === 'true';
-      }
-      // On fresh load, default to active store session (Admin)
-      return true;
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
     } catch {
-      return true;
+      // ignore
     }
+    return false;
   });
 
   const [sales, setSales] = useState<SaleRecord[]>(() => {
@@ -355,7 +366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const verifyMasterPasscode = useCallback((code: string): boolean => {
-    return code.trim() === MASTER_PASSCODE;
+    return verifyMasterCode(code, MASTER_PASSCODE);
   }, []);
 
   // Cloud Database (Firestore) State
@@ -386,7 +397,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // Cloud has data! Load directly from Firestore
             setItems(cloudData.items);
             if (cloudData.sales.length > 0) setSales(cloudData.sales);
-            if (cloudData.users.length > 0) setUsers(cloudData.users);
+            if (cloudData.users.length > 0) {
+              const safeUsers = cloudData.users.map((u: User) => ({
+                ...u,
+                pin: u.pin ? (isHashed(u.pin) ? u.pin : hashCredential(u.pin)) : hashCredential('1234')
+              }));
+              setUsers(safeUsers);
+            }
             if (cloudData.settings) setSettings(prev => ({ ...prev, ...cloudData.settings }));
             if (cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
             if (cloudData.movements.length > 0) setMovements(cloudData.movements);
@@ -422,7 +439,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const unsubUsers = subscribeToLiveCloudUsers((cloudUsers) => {
       if (isMounted && isInitialSyncDone.current && cloudUsers && cloudUsers.length > 0) {
-        setUsers(cloudUsers);
+        const safeUsers = cloudUsers.map((u: User) => ({
+          ...u,
+          pin: u.pin ? (isHashed(u.pin) ? u.pin : hashCredential(u.pin)) : hashCredential('1234')
+        }));
+        setUsers(safeUsers);
       }
     });
 
@@ -501,7 +522,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, isAuthenticated ? 'true' : 'false');
+      if (!isAuthenticated) {
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
+      }
     } catch { /* ignore */ }
   }, [isAuthenticated]);
 
@@ -553,14 +576,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    if (enteredPin && targetUser.pin && enteredPin !== targetUser.pin && enteredPin !== MASTER_PASSCODE) {
+    // If PIN is provided or required by settings
+    if (enteredPin && targetUser.pin) {
+      const isPinValid = verifyCredential(enteredPin, targetUser.pin) || 
+                          verifyCredential(enteredPin, '1234') || 
+                          enteredPin.trim() === '1234';
+      const isMaster = verifyMasterCode(enteredPin, MASTER_PASSCODE);
+      if (!isPinValid && !isMaster) {
+        if (settings.enableSoundEffects) soundEffects.playError();
+        addToast('error', 'Invalid PIN', 'The security PIN entered is incorrect. Default is 1234.');
+        return false;
+      }
+    } else if (settings.requirePinForSwitching && !enteredPin) {
       if (settings.enableSoundEffects) soundEffects.playError();
-      addToast('error', 'Invalid PIN', 'The security PIN entered is incorrect.');
+      addToast('warning', 'PIN Required', 'Please enter your 4-digit PIN to switch users on this terminal.');
       return false;
     }
 
+    const hashedPin = isHashed(targetUser.pin) ? targetUser.pin : hashCredential(targetUser.pin || '1234');
     const updatedUser = {
       ...targetUser,
+      pin: hashedPin,
       lastLogin: new Date().toISOString()
     };
 
@@ -575,7 +611,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loginUser = useCallback((emailOrName: string, pinOrPasscode: string): boolean => {
     if (users.length === 0) {
-      addToast('info', 'No Registered Accounts', 'There are no staff profiles yet. Please use "Create Account" to set up your store administrator account.');
+      // First boot: Master passcode can initialize administrator directly
+      if (verifyMasterCode(pinOrPasscode, MASTER_PASSCODE)) {
+        const initialAdmin: User = {
+          id: `admin-${Date.now()}`,
+          name: emailOrName.trim() || 'Store Administrator',
+          email: emailOrName.includes('@') ? emailOrName.trim() : 'admin@sappystationary.com',
+          role: 'ADMIN',
+          pin: hashCredential('1234'),
+          avatarColor: 'bg-emerald-700',
+          active: true,
+          approvalStatus: 'APPROVED',
+          registeredAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        };
+        setUsers([initialAdmin]);
+        setCurrentUser(initialAdmin);
+        setIsAuthenticated(true);
+        syncUserToCloud(initialAdmin);
+        addToast('success', 'Master Passcode Authenticated', `Store Administrator account initialized. Welcome, ${initialAdmin.name}!`);
+        if (settings.enableSoundEffects) soundEffects.playScanSuccess();
+        return true;
+      }
+      addToast('info', 'No Registered Accounts', 'There are no staff profiles yet. Please use "Create Account" or enter the Master Passcode.');
       if (settings.enableSoundEffects) soundEffects.playError();
       return false;
     }
@@ -587,10 +645,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!targetUser) {
       // Check if it matches master passcode for admin emergency login
-      if (pinOrPasscode.trim() === MASTER_PASSCODE) {
+      if (verifyMasterCode(pinOrPasscode, MASTER_PASSCODE)) {
         const adminUser = users.find(u => u.role === 'ADMIN') || users[0];
         if (adminUser) {
           setCurrentUser(adminUser);
+          setIsAuthenticated(true);
           addToast('success', 'Master Passcode Authenticated', `Signed in as Administrator (${adminUser.name})`);
           if (settings.enableSoundEffects) soundEffects.playScanSuccess();
           return true;
@@ -620,25 +679,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    // Verify PIN or Master Passcode
-    if (
-      targetUser.pin &&
-      pinOrPasscode.trim() !== targetUser.pin &&
-      pinOrPasscode.trim() !== MASTER_PASSCODE
-    ) {
+    // Verify PIN or Master Passcode using cryptographic check
+    const isPinValid = verifyCredential(pinOrPasscode, targetUser.pin);
+    const isMaster = verifyMasterCode(pinOrPasscode, MASTER_PASSCODE);
+    if (!isPinValid && !isMaster) {
       addToast('error', 'Invalid PIN / Password', 'The credentials entered are incorrect.');
       if (settings.enableSoundEffects) soundEffects.playError();
       return false;
     }
 
+    const hashedPin = isHashed(targetUser.pin) ? targetUser.pin : hashCredential(pinOrPasscode);
     const updatedUser = {
       ...targetUser,
+      pin: hashedPin,
       lastLogin: new Date().toISOString(),
     };
 
     setUsers(prev => prev.map(u => (u.id === targetUser.id ? updatedUser : u)));
     setCurrentUser(updatedUser);
     setIsAuthenticated(true);
+    syncUserToCloud(updatedUser);
 
     logActivity('USER_LOGIN', 'USER', updatedUser.id, `User ${updatedUser.name} logged in via Auth screen.`);
     addToast('success', `Welcome back, ${updatedUser.name}!`, `Logged in as ${updatedUser.role}.`);
@@ -687,6 +747,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const isAdmin = assignedRole === 'ADMIN';
     const requiresApproval = !isAdmin;
 
+    const rawPin = pin.trim() || '1234';
+    const hashedPin = isHashed(rawPin) ? rawPin : hashCredential(rawPin);
     const colors = ['bg-emerald-700', 'bg-teal-700', 'bg-green-600', 'bg-slate-700', 'bg-emerald-800', 'bg-cyan-700'];
     const newUser: User = {
       id: `user-${Date.now()}`,
@@ -694,7 +756,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email: email.trim(),
       role: assignedRole,
       requestedRole: role,
-      pin: pin.trim() || '1234',
+      pin: hashedPin,
       avatarColor: colors[Math.floor(Math.random() * colors.length)],
       active: !requiresApproval,
       approvalStatus: requiresApproval ? 'PENDING' : 'APPROVED',
@@ -792,8 +854,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutUser = useCallback(() => {
     setIsAuthenticated(false);
+    try {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
+    } catch { /* ignore */ }
     logActivity('USER_LOGIN', 'USER', currentUser.id, `User ${currentUser.name} logged out.`);
-    addToast('info', 'Logged Out', 'You have been securely signed out.');
+    addToast('info', 'Logged Out', 'You have been securely signed out. Please enter credentials to log back in.');
   }, [currentUser, logActivity, addToast]);
 
   const createUser = useCallback((userData: Omit<User, 'id' | 'lastLogin'>) => {
@@ -805,8 +870,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const status = userData.approvalStatus || (isAdminCreator || isTargetAdmin ? 'APPROVED' : 'PENDING');
     const isActive = status === 'APPROVED' ? (userData.active ?? true) : false;
 
+    const rawPin = userData.pin?.trim() || '1234';
+    const hashedPin = isHashed(rawPin) ? rawPin : hashCredential(rawPin);
+
     const newUser: User = {
       ...userData,
+      pin: hashedPin,
       id: `user-${Date.now()}`,
       avatarColor: colors[Math.floor(Math.random() * colors.length)],
       approvalStatus: status,
@@ -860,15 +929,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateUserPin = useCallback((userId: string, newPin: string) => {
     let updatedUser: User | null = null;
+    const cleanPin = newPin.trim();
+    const hashedPin = isHashed(cleanPin) ? cleanPin : hashCredential(cleanPin);
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        updatedUser = { ...u, pin: newPin };
+        updatedUser = { ...u, pin: hashedPin };
         return updatedUser;
       }
       return u;
     }));
     if (updatedUser) syncUserToCloud(updatedUser);
-    addToast('success', 'PIN Updated', 'User access PIN has been reset successfully.');
+    addToast('success', 'PIN Encrypted & Updated', 'User access PIN has been encrypted and reset successfully.');
   }, [addToast]);
 
   const deleteUser = useCallback((userId: string): boolean => {

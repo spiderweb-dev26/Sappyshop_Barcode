@@ -313,7 +313,10 @@ export const UserRoleManager: React.FC = () => {
                           )}
                         </div>
                         <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
-                        <p className="text-[10px] text-slate-400 font-mono">PIN: &bull;&bull;&bull;&bull;</p>
+                        <p className="text-[10px] text-emerald-800 font-mono flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5 text-emerald-600" />
+                          <span>Encrypted PIN: &bull;&bull;&bull;&bull; (SHA-256)</span>
+                        </p>
                       </div>
                     </div>
 
@@ -582,7 +585,10 @@ export const UserRoleManager: React.FC = () => {
 
             <form onSubmit={handleSaveResetPin} className="p-4 space-y-3">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Enter New 4-Digit PIN</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700">Enter New 4-Digit PIN</label>
+                  <span className="text-[10px] text-emerald-800 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">SHA-256 Encrypted</span>
+                </div>
                 <input
                   type="password"
                   maxLength={4}
@@ -592,6 +598,9 @@ export const UserRoleManager: React.FC = () => {
                   className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-md text-sm font-mono font-bold text-center tracking-widest text-slate-900 focus:outline-none focus:border-emerald-500"
                   required
                 />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  The PIN is cryptographically hashed with salt before storage.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

@@ -37,7 +37,8 @@ export const SettingsView: React.FC = () => {
     addToast,
     requestMasterAuth,
     cloudSyncStatus,
-    syncToCloudNow 
+    syncToCloudNow,
+    updateSettings
   } = useApp();
 
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
@@ -214,6 +215,78 @@ export const SettingsView: React.FC = () => {
               <li>Staff User Creation, Role Assignments & PIN Resets</li>
               <li>Sales History Invoices Refund Issuance</li>
             </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Terminal Access & Staff PIN Policy */}
+      <div className="bg-white p-4 rounded-lg border border-emerald-200/80 shadow-sm space-y-3">
+        <div className="flex items-center justify-between pb-2.5 border-b border-emerald-100">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-emerald-50 text-emerald-800 rounded-md">
+              <KeyRound className="w-4 h-4 text-emerald-700" />
+            </div>
+            <div>
+              <h2 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Terminal Access & Staff PIN Policy</h2>
+              <p className="text-[11px] text-slate-500">Configure whether staff and cashiers must enter a 4-digit PIN when switching profiles.</p>
+            </div>
+          </div>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+            settings.requirePinForSwitching 
+              ? 'bg-amber-50 text-amber-800 border-amber-300' 
+              : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+          }`}>
+            {settings.requirePinForSwitching ? 'PIN REQUIRED' : 'QUICK 1-CLICK (NO PIN)'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-xs">Require PIN on User Switch</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.requirePinForSwitching ?? false}
+                    onChange={(e) => {
+                      const val = e.target.checked;
+                      updateSettings({ requirePinForSwitching: val });
+                      addToast('info', 'PIN Requirement Updated', val ? '4-Digit PIN is now required to switch user profiles.' : 'One-click profile switching enabled (No PIN required).');
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+              <p className="text-[11px] text-slate-500 pt-1">
+                {settings.requirePinForSwitching
+                  ? 'Active: Staff must type their 4-digit PIN when switching profiles on the register.'
+                  : 'Disabled: Any staff member or admin can switch terminal profiles with a single tap without entering a PIN.'}
+              </p>
+            </div>
+            <div className="pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
+              Current Mode: <strong className={settings.requirePinForSwitching ? 'text-amber-700' : 'text-emerald-700'}>
+                {settings.requirePinForSwitching ? 'Strict PIN Verification' : 'Open Fast Terminal Switching (Recommended)'}
+              </strong>
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+            <span className="font-bold text-slate-800 text-xs block">Default Credentials & Information:</span>
+            <div className="space-y-1.5 text-[11px] text-slate-600">
+              <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                <span className="text-slate-500">Default Staff PIN:</span>
+                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300">1234</span>
+              </div>
+              <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                <span className="text-slate-500">Master Passcode:</span>
+                <span className="font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300">{MASTER_PASSCODE}</span>
+              </div>
+              <p className="text-[10px] text-slate-500 pt-0.5">
+                Staff PINs can be customized or reset by Administrators at any time under the <strong>Users</strong> tab.
+              </p>
+            </div>
           </div>
         </div>
       </div>

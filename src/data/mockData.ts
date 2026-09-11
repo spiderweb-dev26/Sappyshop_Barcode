@@ -15,6 +15,7 @@ export const INITIAL_SETTINGS: StoreSettings = {
   receiptFooterMessage: 'Thank you for shopping at Sappy Stationary! Fine papers, notebooks, pens & desk accessories. Returns accepted within 30 days with receipt.',
   enableSoundEffects: true,
   enableHardwareScannerAutoSubmit: true,
+  requirePinForSwitching: false,
 };
 
 export const INITIAL_ITEMS: InventoryItem[] = getFullStationeryCatalog();

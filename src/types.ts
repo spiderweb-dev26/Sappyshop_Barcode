@@ -229,6 +229,7 @@ export interface StoreSettings {
   receiptFooterMessage: string;
   enableSoundEffects: boolean;
   enableHardwareScannerAutoSubmit: boolean;
+  requirePinForSwitching?: boolean; // When false, staff and admins can switch profiles without entering a PIN
 }
 
 export interface BarcodeLabelOption {

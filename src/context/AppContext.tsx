@@ -45,8 +45,10 @@ import {
   subscribeToLiveCloudItems, 
   subscribeToLiveCloudSales, 
   subscribeToLiveCloudUsers,
+  subscribeToGlobalSystemReset,
   wipeCloudDatabase,
   wipeCloudCollection,
+  clearCloudResetFlag,
   COLLECTIONS
 } from '../lib/firebaseService';
 import { 
@@ -218,24 +220,20 @@ try {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Check if system has been explicitly reset to clean slate
-  const isSystemResetActive = (() => {
+  // Check and manage reactive clean slate reset state
+  const [isSystemReset, setIsSystemReset] = useState<boolean>(() => {
     try {
       return localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
     } catch {
       return false;
     }
-  })();
+  });
 
   // Load state from localStorage or mock defaults
   const [items, setItems] = useState<InventoryItem[]>(() => {
     try {
-      if (isSystemResetActive) {
-        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_items`);
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) {
         return [];
       }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_items`);
@@ -248,18 +246,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }));
         }
       }
+      // If system has been initialized before or marked as clean slate, return empty array
+      const hasInitialized = localStorage.getItem(`${LOCAL_STORAGE_KEY}_initialized`) === 'true';
+      if (hasInitialized) {
+        return [];
+      }
       return INITIAL_ITEMS;
     } catch {
-      return isSystemResetActive ? [] : INITIAL_ITEMS;
+      return [];
     }
   });
 
   const [users, setUsers] = useState<User[]>(() => {
     try {
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) {
+        return [];
+      }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           // Encrypt/hash any legacy plain text PINs
           return parsed.map((u: User) => ({
             ...u,
@@ -267,20 +274,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }));
         }
       }
-      return INITIAL_USERS;
+      return [];
     } catch {
-      return INITIAL_USERS;
+      return [];
     }
   });
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
     try {
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) return DEFAULT_EMPTY_USER;
       const savedUserId = localStorage.getItem(`${LOCAL_STORAGE_KEY}_current_user_id`);
       const savedUsers = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
-      let usersList = INITIAL_USERS;
+      let usersList: User[] = [];
       if (savedUsers) {
         const parsed = JSON.parse(savedUsers);
-        if (Array.isArray(parsed) && parsed.length > 0) usersList = parsed;
+        if (Array.isArray(parsed)) usersList = parsed;
       }
       const found = usersList.find(u => u && u.id === savedUserId);
       return found || usersList[0] || DEFAULT_EMPTY_USER;
@@ -292,6 +301,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Fast session restore: preserves login on mobile reload/tab switch
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) return false;
       const savedAuth = localStorage.getItem(`${LOCAL_STORAGE_KEY}_is_authenticated`);
       return savedAuth === 'true';
     } catch {
@@ -312,12 +323,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [sales, setSales] = useState<SaleRecord[]>(() => {
     try {
-      if (isSystemResetActive) {
-        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_sales`);
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) {
         return [];
       }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_sales`);
@@ -325,20 +332,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
-      return INITIAL_SALES;
+      return [];
     } catch {
-      return isSystemResetActive ? [] : INITIAL_SALES;
+      return [];
     }
   });
 
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
     try {
-      if (isSystemResetActive) {
-        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_expenses`);
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) {
         return [];
       }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_expenses`);
@@ -346,20 +349,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
-      return INITIAL_EXPENSES;
+      return [];
     } catch {
-      return isSystemResetActive ? [] : INITIAL_EXPENSES;
+      return [];
     }
   });
 
   const [movements, setMovements] = useState<StockMovement[]>(() => {
     try {
-      if (isSystemResetActive) {
-        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_movements`);
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) {
         return [];
       }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_movements`);
@@ -367,20 +366,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
-      return INITIAL_MOVEMENTS;
+      return [];
     } catch {
-      return isSystemResetActive ? [] : INITIAL_MOVEMENTS;
+      return [];
     }
   });
 
   const [logs, setLogs] = useState<ActivityLog[]>(() => {
     try {
-      if (isSystemResetActive) {
-        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_logs`);
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        }
+      const isResetFlag = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isResetFlag) {
         return [];
       }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_logs`);
@@ -388,9 +383,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
-      return INITIAL_LOGS;
+      return [];
     } catch {
-      return isSystemResetActive ? [] : INITIAL_LOGS;
+      return [];
     }
   });
 
@@ -465,15 +460,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setCloudSyncStatus('syncing');
       try {
-        const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+        const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true' || isSystemReset;
         const cloudData = await fetchCloudData();
         if (!isMounted) return;
 
         if (cloudData) {
-          if (isReset) {
-            // Local state was explicitly reset to a clean slate.
-            // If the remote cloud database still has residual items or sales, purge them so state never reverts!
-            if (cloudData.items.length > 0 || cloudData.sales.length > 0) {
+          if (isReset || cloudData.isCloudReset) {
+            // Local state or cloud was explicitly reset to clean slate.
+            // Enforce empty state locally and purge any residual Firestore data
+            setIsSystemReset(true);
+            setItems([]);
+            setSales([]);
+            setExpenses([]);
+            setMovements([]);
+            setUsers([]);
+            setCurrentUser(DEFAULT_EMPTY_USER);
+            setIsAuthenticated(false);
+            setWelcomeUser(null);
+            try {
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_full_reset`, 'true');
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_initialized`, 'true');
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, 'false');
+              localStorage.removeItem(`${LOCAL_STORAGE_KEY}_current_user_id`);
+              localStorage.removeItem('sappy_terminal_saved_email');
+            } catch { /* ignore */ }
+            if (cloudData.items.length > 0 || cloudData.sales.length > 0 || cloudData.expenses.length > 0 || cloudData.users.length > 0) {
               console.log('Synchronizing clean slate state to remote Firestore...');
               await wipeCloudDatabase();
             }
@@ -523,7 +541,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Setup live real-time listeners across active POS terminals
     const unsubItems = subscribeToLiveCloudItems((cloudItems) => {
       const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
-      if (isReset) return;
+      if (isReset) {
+        setItems([]);
+        return;
+      }
       if (isMounted && isInitialSyncDone.current && cloudItems && cloudItems.length > 0) {
         setItems(cloudItems);
       }
@@ -531,20 +552,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const unsubSales = subscribeToLiveCloudSales((cloudSales) => {
       const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
-      if (isReset) return;
+      if (isReset) {
+        setSales([]);
+        return;
+      }
       if (isMounted && isInitialSyncDone.current && cloudSales && cloudSales.length > 0) {
         setSales(cloudSales);
       }
     });
 
     const unsubUsers = subscribeToLiveCloudUsers((cloudUsers) => {
-      if (isMounted && isInitialSyncDone.current && cloudUsers && cloudUsers.length > 0) {
-        const safeUsers = cloudUsers.map((u: User) => ({
-          ...u,
-          pin: u.pin ? (isHashed(u.pin) ? u.pin : hashCredential(u.pin)) : hashCredential('1234')
-        }));
-        setUsers(safeUsers);
+      const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isReset) {
+        setUsers([]);
+        return;
       }
+      if (isMounted && isInitialSyncDone.current && cloudUsers) {
+        if (cloudUsers.length > 0) {
+          const safeUsers = cloudUsers.map((u: User) => ({
+            ...u,
+            pin: u.pin ? (isHashed(u.pin) ? u.pin : hashCredential(u.pin)) : hashCredential('1234')
+          }));
+          setUsers(safeUsers);
+        } else {
+          setUsers([]);
+        }
+      }
+    });
+
+    // Universal Cross-Device Real-time Wipe Listener
+    const unsubGlobalReset = subscribeToGlobalSystemReset((data) => {
+      console.warn('REAL-TIME GLOBAL SYSTEM WIPE RECEIVED FROM REMOTE TERMINAL:', data);
+      setIsSystemReset(true);
+      setItems([]);
+      setSales([]);
+      setExpenses([]);
+      setMovements([]);
+      setCart([]);
+      setLogs([]);
+      setUsers([]);
+      setCurrentUser(DEFAULT_EMPTY_USER);
+      setIsAuthenticated(false);
+      setWelcomeUser(null);
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_full_reset`, 'true');
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_initialized`, 'true');
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([]));
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, 'false');
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_current_user_id`);
+        localStorage.removeItem('sappy_terminal_saved_email');
+      } catch { /* ignore */ }
+      addToast('error', 'Universal Reset Executed', 'An irreversible full wipe was executed across all devices and users.');
     });
 
     return () => {
@@ -552,6 +616,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubItems();
       unsubSales();
       unsubUsers();
+      unsubGlobalReset();
     };
   }, []);
 
@@ -620,7 +685,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_current_user_id`, currentUser.id);
+      if (currentUser && currentUser.id) {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_current_user_id`, currentUser.id);
+      } else {
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_current_user_id`);
+      }
     } catch { /* ignore */ }
   }, [currentUser]);
 
@@ -633,6 +702,89 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch { /* ignore */ }
   }, [isAuthenticated]);
+
+  // Executes immediate local wipe across memory and storage (used locally and on broadcast from other devices)
+  const executeLocalWipe = useCallback(() => {
+    setIsSystemReset(true);
+    setItems([]);
+    setSales([]);
+    setExpenses([]);
+    setMovements([]);
+    setCart([]);
+    setLogs([]);
+    setUsers([]);
+    setCurrentUser(DEFAULT_EMPTY_USER);
+    setIsAuthenticated(false);
+    setWelcomeUser(null);
+
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_full_reset`, 'true');
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_initialized`, 'true');
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, 'false');
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_current_user_id`);
+      localStorage.removeItem('sappy_terminal_saved_email');
+
+      const legacyKeys = [
+        'sappy_stationary_inventory_v1',
+        'sappy_stationary_inventory_v1_items',
+        'sappy_stationary_inventory_v1_sales',
+        'sappy_stationary_inventory_v1_expenses',
+        'sappy_stationary_inventory_v1_movements',
+        'sappy_stationary_inventory_v1_logs',
+        'sappy_stationary_inventory_v1_users',
+        'sappy_stationary_inventory_v1_settings',
+        'items',
+        'sales'
+      ];
+      legacyKeys.forEach(k => {
+        try { localStorage.removeItem(k); } catch { /* ignore */ }
+      });
+    } catch (err) {
+      console.warn('Error during local wipe execution:', err);
+    }
+  }, []);
+
+  // Multi-tab / Multi-window instant synchronization for universal wipe
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('sappy_pos_global_sync');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'GLOBAL_SYSTEM_WIPE') {
+            console.warn('Cross-tab global system wipe event received!');
+            executeLocalWipe();
+            addToast('error', 'Universal Reset', 'A permanent full reset was executed across all devices. All data and users have been cleared.');
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel initialization error:', e);
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === `${LOCAL_STORAGE_KEY}_cross_device_reset` || e.key === `${LOCAL_STORAGE_KEY}_full_reset`) {
+        if (localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true') {
+          console.warn('Storage event triggered universal reset on tab!');
+          executeLocalWipe();
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      bc?.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [executeLocalWipe, addToast]);
 
   // Activity Logger
   const logActivity = useCallback((
@@ -1079,6 +1231,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setItems(prev => [newItem, ...prev]);
+    try {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
+    } catch { /* ignore */ }
+    setIsSystemReset(false);
+    clearCloudResetFlag();
     syncItemToCloud(newItem);
 
     // Record initial movement
@@ -1221,6 +1378,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return Array.from(map.values());
       });
     }
+
+    try {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
+    } catch { /* ignore */ }
+    setIsSystemReset(false);
+    clearCloudResetFlag();
 
     syncAllItemsToCloud(sanitized);
 
@@ -1647,62 +1810,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetAllDataToSample = useCallback(() => {
     try {
       localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_initialized`, 'true');
     } catch { /* ignore */ }
+    setIsSystemReset(false);
+    clearCloudResetFlag();
     setItems(INITIAL_ITEMS);
     setUsers(INITIAL_USERS);
-    setCurrentUser(INITIAL_USERS[0]);
+    if (INITIAL_USERS.length > 0) {
+      setCurrentUser(INITIAL_USERS[0]);
+    }
     setSales(INITIAL_SALES);
     setExpenses(INITIAL_EXPENSES);
     setMovements(INITIAL_MOVEMENTS);
     setLogs(INITIAL_LOGS);
     setSettings(INITIAL_SETTINGS);
     setCart([]);
-    logActivity('DATA_RESTORED', 'SYSTEM', undefined, 'Reset entire system database to Sappy Stationary default seeds');
-    addToast('info', 'System Reset', 'Restored default Sappy Stationary inventory, demo transactions, and users.');
+    logActivity('DATA_RESTORED', 'SYSTEM', undefined, 'Restored Sappy Stationary sample catalog.');
+    addToast('info', 'Sample Catalog Restored', 'Loaded sample stationery catalog.');
   }, [logActivity, addToast]);
 
-  // 1. FULL RESET: Remove Everything (Complete Clean Slate)
+  // 1. FULL RESET: Irreversible Wipe Across ALL Devices and Users at Once
   const fullResetSystem = useCallback(async () => {
-    // 1. Record explicit full reset flag in localStorage so page refresh never resurrects old items
+    // 1. Execute immediate local wipe across memory and local storage
+    executeLocalWipe();
+
+    // 2. Broadcast immediately to all other open tabs and windows in current browser
     try {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_full_reset`, 'true');
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify([]));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify([]));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify([]));
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
-    } catch (err) {
-      console.warn('LocalStorage error during full reset:', err);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cross_device_reset`, Date.now().toString());
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('sappy_pos_global_sync');
+        bc.postMessage({ type: 'GLOBAL_SYSTEM_WIPE', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch (bcErr) {
+      console.warn('BroadcastChannel error:', bcErr);
     }
 
-    // 2. Clear state in memory
-    setItems([]);
-    setSales([]);
-    setExpenses([]);
-    setMovements([]);
-    setCart([]);
-
-    const resetLog: ActivityLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
-      actionType: 'FULL_RESET',
-      entityType: 'SYSTEM',
-      details: `Full System Reset executed by ${currentUser.name}: Removed all inventory catalog items, sales records, expenses, and logs. Clean slate initiated.`
-    };
-    setLogs([resetLog]);
-    try {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([resetLog]));
-    } catch { /* ignore */ }
-
-    // 3. Purge remote Firestore database if connected so remote cloud never reverts local state
+    // 3. Purge remote Firestore database (ALL collections including USERS) and broadcast to all remote devices
     if (db) {
       try {
         setCloudSyncStatus('syncing');
         await wipeCloudDatabase();
-        await syncLogToCloud(resetLog);
         setCloudSyncStatus('synced');
       } catch (err) {
         console.warn('Firestore cloud wipe error:', err);
@@ -1710,11 +1858,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     addToast(
-      'warning',
-      'Full Reset Complete',
-      'All inventory items, sales records, expenses, and transaction logs have been permanently wiped.'
+      'success',
+      'Irreversible Full Reset Executed',
+      'All inventory, sales records, expenses, and user accounts have been permanently wiped across all devices and terminals.'
     );
-  }, [currentUser, addToast]);
+  }, [executeLocalWipe, addToast]);
 
   // 2. YEAR END RESET: Remove everything except remaining items and unpaid customer credits
   const yearEndReset = useCallback(async () => {

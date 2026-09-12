@@ -182,6 +182,7 @@ export async function fetchCloudData(): Promise<{
   movements: StockMovement[];
   logs: ActivityLog[];
   settings: StoreSettings | null;
+  isCloudReset?: boolean;
 } | null> {
   if (!db) return null;
   try {
@@ -206,14 +207,18 @@ export async function fetchCloudData(): Promise<{
     const settingsSnap = await getDoc(doc(db, COLLECTIONS.SETTINGS, 'store_config'));
     const settings = settingsSnap.exists() ? (settingsSnap.data() as StoreSettings) : null;
 
+    const stateSnap = await getDoc(doc(db, COLLECTIONS.SETTINGS, 'system_state'));
+    const isCloudReset = stateSnap.exists() ? Boolean(stateSnap.data()?.isReset) : false;
+
     return {
-      items,
-      sales,
+      items: isCloudReset ? [] : items,
+      sales: isCloudReset ? [] : sales,
       users,
-      expenses,
-      movements,
+      expenses: isCloudReset ? [] : expenses,
+      movements: isCloudReset ? [] : movements,
       logs,
-      settings
+      settings,
+      isCloudReset
     };
   } catch (error) {
     console.warn('Firestore: failed to fetch cloud data', error);
@@ -294,16 +299,69 @@ export async function wipeCloudCollection(collectionName: string): Promise<void>
 }
 
 /**
- * Permanently wipes all inventory items, sales records, expenses, movements, and logs from Firestore
+ * Permanently and irreversibly wipes all inventory items, sales records, expenses, movements, logs, and USERS from Firestore,
+ * broadcasting an immediate global system wipe event across all connected devices and terminals.
  */
 export async function wipeCloudDatabase(): Promise<void> {
   if (!db) return;
-  await Promise.all([
-    wipeCloudCollection(COLLECTIONS.ITEMS),
-    wipeCloudCollection(COLLECTIONS.SALES),
-    wipeCloudCollection(COLLECTIONS.EXPENSES),
-    wipeCloudCollection(COLLECTIONS.MOVEMENTS),
-    wipeCloudCollection(COLLECTIONS.LOGS)
-  ]);
+  try {
+    const wipeToken = `wipe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    // Set system_state FIRST to trigger instant real-time broadcast across all listening devices
+    const stateRef = doc(db, COLLECTIONS.SETTINGS, 'system_state');
+    await setDoc(stateRef, {
+      isReset: true,
+      action: 'PERMANENT_WIPE_ALL',
+      resetToken: wipeToken,
+      resetAt: new Date().toISOString()
+    });
+
+    await Promise.all([
+      wipeCloudCollection(COLLECTIONS.ITEMS),
+      wipeCloudCollection(COLLECTIONS.SALES),
+      wipeCloudCollection(COLLECTIONS.EXPENSES),
+      wipeCloudCollection(COLLECTIONS.MOVEMENTS),
+      wipeCloudCollection(COLLECTIONS.LOGS),
+      wipeCloudCollection(COLLECTIONS.USERS)
+    ]);
+  } catch (error) {
+    console.warn('Firestore: failed to wipe database', error);
+  }
+}
+
+/**
+ * Real-time listener for global cross-device wipe broadcasts.
+ * When any terminal triggers a full reset, all connected devices instantly receive this notification.
+ */
+export function subscribeToGlobalSystemReset(onResetTriggered: (data: { resetAt: string; resetToken: string }) => void): () => void {
+  if (!db) return () => {};
+  try {
+    return onSnapshot(doc(db, COLLECTIONS.SETTINGS, 'system_state'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data && data.isReset && data.action === 'PERMANENT_WIPE_ALL') {
+          onResetTriggered({
+            resetAt: data.resetAt || new Date().toISOString(),
+            resetToken: data.resetToken || 'reset'
+          });
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('Failed to subscribe to system_state:', err);
+    return () => {};
+  }
+}
+
+export async function clearCloudResetFlag(): Promise<void> {
+  if (!db) return;
+  try {
+    const stateRef = doc(db, COLLECTIONS.SETTINGS, 'system_state');
+    await setDoc(stateRef, {
+      isReset: false,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn('Firestore: failed to clear reset flag', error);
+  }
 }
 

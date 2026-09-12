@@ -71,6 +71,98 @@ export function generateAutoBarcode(): string {
   return `${raw12}${checksum}`;
 }
 
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  type?: 'barcode' | 'sku' | 'name';
+  matchedItem?: InventoryItem;
+  message?: string;
+}
+
+/**
+ * Checks whether an item's barcode, SKU, or product name conflicts with an existing item in the catalog.
+ * If editing an existing item, pass `excludeItemId` so it doesn't compare against itself.
+ */
+export function checkDuplicateItem(
+  candidate: { barcode?: string; sku?: string; name?: string; id?: string },
+  catalog: InventoryItem[],
+  excludeItemId?: string
+): DuplicateCheckResult {
+  const ignoreId = excludeItemId || candidate.id;
+  const filteredCatalog = ignoreId ? catalog.filter(i => i.id !== ignoreId) : catalog;
+
+  // 1. Check Barcode duplicate
+  const normBarcode = candidate.barcode?.trim().toLowerCase();
+  if (normBarcode) {
+    const match = filteredCatalog.find(i => (i.barcode || '').trim().toLowerCase() === normBarcode);
+    if (match) {
+      return {
+        isDuplicate: true,
+        type: 'barcode',
+        matchedItem: match,
+        message: `Barcode "${candidate.barcode?.trim()}" is already assigned to "${match.name}" (SKU: ${match.sku}).`
+      };
+    }
+  }
+
+  // 2. Check SKU duplicate
+  const normSku = candidate.sku?.trim().toLowerCase();
+  if (normSku) {
+    const match = filteredCatalog.find(i => (i.sku || '').trim().toLowerCase() === normSku);
+    if (match) {
+      return {
+        isDuplicate: true,
+        type: 'sku',
+        matchedItem: match,
+        message: `SKU "${candidate.sku?.trim()}" is already assigned to "${match.name}".`
+      };
+    }
+  }
+
+  // 3. Check exact Product Name duplicate
+  const normName = candidate.name?.trim().toLowerCase();
+  if (normName) {
+    const match = filteredCatalog.find(i => (i.name || '').trim().toLowerCase() === normName);
+    if (match) {
+      return {
+        isDuplicate: true,
+        type: 'name',
+        matchedItem: match,
+        message: `An item named "${match.name}" already exists in inventory (SKU: ${match.sku}, Category: ${match.category}).`
+      };
+    }
+  }
+
+  return { isDuplicate: false };
+}
+
+/**
+ * Auto-generates a guaranteed unique SKU code that does not collide with existing catalog items
+ */
+export function generateUniqueSku(category?: string, name?: string, catalog: InventoryItem[] = []): string {
+  let attempts = 0;
+  while (attempts < 100) {
+    const candidate = generateAutoSku(category, name);
+    const exists = catalog.some(i => (i.sku || '').trim().toLowerCase() === candidate.toLowerCase());
+    if (!exists) return candidate;
+    attempts++;
+  }
+  return `${(category || 'ITM').slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+}
+
+/**
+ * Auto-generates a guaranteed unique EAN-13 barcode that does not collide with existing catalog items
+ */
+export function generateUniqueBarcode(catalog: InventoryItem[] = []): string {
+  let attempts = 0;
+  while (attempts < 100) {
+    const candidate = generateAutoBarcode();
+    const exists = catalog.some(i => (i.barcode || '').trim().toLowerCase() === candidate.toLowerCase());
+    if (!exists) return candidate;
+    attempts++;
+  }
+  return `890${Date.now().toString().slice(-9)}`;
+}
+
 /**
  * Smart resolver for QR codes and 1D barcodes.
  * Handles:

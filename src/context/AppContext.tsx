@@ -27,7 +27,13 @@ import {
 } from '../data/mockData';
 import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
-import { generateAutoSku, generateAutoBarcode } from '../utils/skuBarcodeUtils';
+import { 
+  generateAutoSku, 
+  generateAutoBarcode, 
+  checkDuplicateItem, 
+  generateUniqueSku, 
+  generateUniqueBarcode 
+} from '../utils/skuBarcodeUtils';
 import { getItemDisplayImage } from '../utils/imageUtils';
 import { db } from '../lib/firebase';
 import { 
@@ -129,8 +135,8 @@ interface AppContextType {
   deleteUser: (userId: string) => boolean;
 
   // Inventory Actions
-  addItem: (itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => InventoryItem;
-  updateItem: (itemId: string, updates: Partial<InventoryItem>) => void;
+  addItem: (itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => InventoryItem | null;
+  updateItem: (itemId: string, updates: Partial<InventoryItem>) => boolean;
   deleteItem: (itemId: string) => boolean;
   adjustStock: (itemId: string, quantityChange: number, type: StockMovementType, reason: string) => void;
   bulkImportItems: (newItems: Partial<InventoryItem>[], mode: 'append' | 'replace') => number;
@@ -1081,7 +1087,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser.id, users, logActivity, addToast]);
 
   // Inventory Management
-  const addItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>): InventoryItem => {
+  const addItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>): InventoryItem | null => {
+    // 1. Restrict duplicate items (Barcode, SKU, or Name)
+    const dupCheck = checkDuplicateItem(itemData, items);
+    if (dupCheck.isDuplicate) {
+      if (settings.enableSoundEffects) soundEffects.playWarning();
+      addToast(
+        'error',
+        `Duplicate Restricted: ${dupCheck.type ? dupCheck.type.toUpperCase() : 'ITEM'}`,
+        dupCheck.message || 'An item with this identifier already exists in your inventory.'
+      );
+      return null;
+    }
+
     const newItem: InventoryItem = {
       ...itemData,
       id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
@@ -1120,9 +1138,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logActivity('ITEM_CREATED', 'ITEM', newItem.id, `Cataloged new item: ${newItem.name} (SKU: ${newItem.sku}, Stock: ${newItem.stock})`);
     addToast('success', 'Item Added', `${newItem.name} is now available in inventory.`);
     return newItem;
-  }, [currentUser, logActivity, addToast]);
+  }, [items, currentUser, settings.enableSoundEffects, logActivity, addToast]);
 
-  const updateItem = useCallback((itemId: string, updates: Partial<InventoryItem>) => {
+  const updateItem = useCallback((itemId: string, updates: Partial<InventoryItem>): boolean => {
+    const currentItem = items.find(i => i.id === itemId);
+    if (!currentItem) return false;
+
+    // Restrict duplicate items when updating identifiers (Barcode, SKU, Name)
+    const candidate = {
+      ...currentItem,
+      ...updates,
+      id: itemId
+    };
+    const dupCheck = checkDuplicateItem(candidate, items, itemId);
+    if (dupCheck.isDuplicate) {
+      if (settings.enableSoundEffects) soundEffects.playWarning();
+      addToast(
+        'error',
+        `Duplicate Restricted: ${dupCheck.type ? dupCheck.type.toUpperCase() : 'ITEM'}`,
+        dupCheck.message || 'Cannot update: this code or name conflicts with an existing item.'
+      );
+      return false;
+    }
+
     setItems(prev => prev.map(item => {
       if (item.id === itemId) {
         const updated = {
@@ -1137,7 +1175,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return item;
     }));
     addToast('info', 'Item Updated', 'Inventory changes saved.');
-  }, [logActivity, addToast]);
+    return true;
+  }, [items, settings.enableSoundEffects, logActivity, addToast]);
 
   const deleteItem = useCallback((itemId: string): boolean => {
     const itemToDelete = items.find(i => i.id === itemId);
@@ -1197,59 +1236,159 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [items, currentUser, settings.enableSoundEffects, logActivity, addToast]);
 
   const bulkImportItems = useCallback((newItems: Partial<InventoryItem>[], mode: 'append' | 'replace'): number => {
-    const sanitized: InventoryItem[] = newItems.map((raw, idx) => {
-      const category = raw.category || 'General';
-      const name = raw.name || `Imported Item ${idx + 1}`;
-      const sku = raw.sku || generateAutoSku(category, name);
-      const barcode = raw.barcode || generateAutoBarcode();
-
-      return {
-        id: raw.id || `item-imp-${Date.now()}-${idx}`,
-        sku,
-        barcode,
-        name,
-        category,
-        brand: raw.brand,
-        unit: raw.unit || 'Pcs',
-        costPrice: Number(raw.costPrice) || 0,
-        sellingPrice: Number(raw.sellingPrice) || 0,
-        stock: Number(raw.stock) || 0,
-        minStockAlert: Number(raw.minStockAlert) || 5,
-        location: raw.location,
-        supplier: raw.supplier,
-        batchNumber: raw.batchNumber,
-        expiryDate: raw.expiryDate,
-        description: raw.description,
-        imageUrl: raw.imageUrl,
-        createdAt: raw.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    });
+    let duplicateCount = 0;
+    let addedCount = 0;
 
     if (mode === 'replace') {
-      setItems(sanitized);
-    } else {
-      // Append or update existing by SKU
-      setItems(prev => {
-        const map = new Map<string, InventoryItem>();
-        prev.forEach(i => map.set(i.sku, i));
-        sanitized.forEach(i => map.set(i.sku, i));
-        return Array.from(map.values());
+      // Deduplicate the imported items internally so no duplicates exist in new catalog
+      const seenBarcodes = new Set<string>();
+      const seenSkus = new Set<string>();
+      const seenNames = new Set<string>();
+      const uniqueItems: InventoryItem[] = [];
+
+      newItems.forEach((raw, idx) => {
+        const category = raw.category || 'General';
+        const name = (raw.name || `Imported Item ${idx + 1}`).trim();
+        const normName = name.toLowerCase();
+
+        let sku = (raw.sku || '').trim();
+        if (!sku || seenSkus.has(sku.toLowerCase())) {
+          sku = generateUniqueSku(category, name, uniqueItems);
+        }
+
+        let barcode = (raw.barcode || '').trim();
+        if (!barcode || seenBarcodes.has(barcode.toLowerCase())) {
+          barcode = generateUniqueBarcode(uniqueItems);
+        }
+
+        if (seenNames.has(normName) || seenSkus.has(sku.toLowerCase()) || seenBarcodes.has(barcode.toLowerCase())) {
+          duplicateCount++;
+          // Merge stock with existing entry in uniqueItems instead of adding duplicate
+          const existing = uniqueItems.find(u => 
+            u.name.trim().toLowerCase() === normName || 
+            u.sku.trim().toLowerCase() === sku.toLowerCase() || 
+            u.barcode.trim().toLowerCase() === barcode.toLowerCase()
+          );
+          if (existing) {
+            existing.stock += (Number(raw.stock) || 0);
+          }
+          return;
+        }
+
+        seenNames.add(normName);
+        seenSkus.add(sku.toLowerCase());
+        seenBarcodes.add(barcode.toLowerCase());
+
+        uniqueItems.push({
+          id: raw.id || `item-imp-${Date.now()}-${idx}`,
+          sku,
+          barcode,
+          name,
+          category,
+          brand: raw.brand,
+          unit: raw.unit || 'Pcs',
+          costPrice: Number(raw.costPrice) || 0,
+          sellingPrice: Number(raw.sellingPrice) || 0,
+          stock: Number(raw.stock) || 0,
+          minStockAlert: Number(raw.minStockAlert) || 5,
+          location: raw.location,
+          supplier: raw.supplier,
+          batchNumber: raw.batchNumber,
+          expiryDate: raw.expiryDate,
+          description: raw.description,
+          imageUrl: raw.imageUrl,
+          createdAt: raw.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        addedCount++;
       });
+
+      setItems(uniqueItems);
+      syncAllItemsToCloud(uniqueItems);
+      logActivity('BULK_IMPORT', 'SYSTEM', undefined, `Replaced catalog with ${addedCount} items (${duplicateCount} duplicate entries restricted & merged).`);
+      addToast(
+        'success', 
+        'Catalog Replaced', 
+        `Loaded ${addedCount} items.${duplicateCount > 0 ? ` Restricted ${duplicateCount} duplicate rows (merged stock).` : ''}`
+      );
+      return addedCount;
     }
 
-    try {
-      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
-    } catch { /* ignore */ }
-    setIsSystemReset(false);
-    clearCloudResetFlag();
+    // Append mode: Prevent duplicate items by matching against existing items & current batch
+    const updatedCatalog = [...items];
 
-    syncAllItemsToCloud(sanitized);
+    newItems.forEach((raw, idx) => {
+      const category = raw.category || 'General';
+      const name = (raw.name || `Imported Item ${idx + 1}`).trim();
+      const normName = name.toLowerCase();
+      const rawBarcode = (raw.barcode || '').trim().toLowerCase();
+      const rawSku = (raw.sku || '').trim().toLowerCase();
 
-    logActivity('BULK_IMPORT', 'SYSTEM', undefined, `Imported ${sanitized.length} items via batch import (${mode} mode).`);
-    addToast('success', 'Import Successful', `Successfully imported ${sanitized.length} items into inventory.`);
-    return sanitized.length;
-  }, [logActivity, addToast]);
+      // Check if duplicate of an existing or previously processed item
+      const existingIndex = updatedCatalog.findIndex(item => 
+        (rawBarcode && (item.barcode || '').trim().toLowerCase() === rawBarcode) ||
+        (rawSku && (item.sku || '').trim().toLowerCase() === rawSku) ||
+        (normName && item.name.trim().toLowerCase() === normName)
+      );
+
+      if (existingIndex !== -1) {
+        // DUPLICATE RESTRICTED: do not add duplicate item, merge inventory
+        duplicateCount++;
+        const target = updatedCatalog[existingIndex];
+        const addedStock = Number(raw.stock) || 0;
+        const newSellingPrice = Number(raw.sellingPrice) > 0 ? Number(raw.sellingPrice) : target.sellingPrice;
+        const newCostPrice = Number(raw.costPrice) > 0 ? Number(raw.costPrice) : target.costPrice;
+
+        updatedCatalog[existingIndex] = {
+          ...target,
+          stock: target.stock + addedStock,
+          sellingPrice: newSellingPrice,
+          costPrice: newCostPrice,
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        // Safe to add new unique item
+        const finalSku = (raw.sku || '').trim() || generateUniqueSku(category, name, updatedCatalog);
+        const finalBarcode = (raw.barcode || '').trim() || generateUniqueBarcode(updatedCatalog);
+
+        const newItem: InventoryItem = {
+          id: raw.id || `item-imp-${Date.now()}-${idx}`,
+          sku: finalSku,
+          barcode: finalBarcode,
+          name,
+          category,
+          brand: raw.brand,
+          unit: raw.unit || 'Pcs',
+          costPrice: Number(raw.costPrice) || 0,
+          sellingPrice: Number(raw.sellingPrice) || 0,
+          stock: Number(raw.stock) || 0,
+          minStockAlert: Number(raw.minStockAlert) || 5,
+          location: raw.location,
+          supplier: raw.supplier,
+          batchNumber: raw.batchNumber,
+          expiryDate: raw.expiryDate,
+          description: raw.description,
+          imageUrl: raw.imageUrl,
+          createdAt: raw.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        updatedCatalog.push(newItem);
+        addedCount++;
+      }
+    });
+
+    setItems(updatedCatalog);
+    syncAllItemsToCloud(updatedCatalog);
+
+    logActivity('BULK_IMPORT', 'SYSTEM', undefined, `Appended import: Added ${addedCount} new items, restricted and merged ${duplicateCount} duplicates.`);
+    addToast(
+      'success',
+      'Import Completed',
+      `Added ${addedCount} new items.${duplicateCount > 0 ? ` Restricted ${duplicateCount} duplicate entries (updated existing item stock instead of duplicating).` : ''}`
+    );
+    return addedCount;
+  }, [items, logActivity, addToast]);
 
   // POS & Cart Handling
   const addToCart = useCallback((item: InventoryItem, quantity = 1) => {

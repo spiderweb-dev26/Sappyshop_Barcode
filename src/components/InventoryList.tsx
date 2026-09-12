@@ -14,6 +14,7 @@ import {
   Trash2, 
   ArrowUpDown, 
   AlertTriangle, 
+  AlertCircle,
   CheckCircle2, 
   X, 
   RefreshCw, 
@@ -36,7 +37,16 @@ import {
   exportInventoryToPdf 
 } from '../utils/excelPdfUtils';
 import { formatCurrency } from '../utils/currencyUtils';
-import { generateAutoSku, generateAutoBarcode, isCostUnknown, formatCostPrice, calculateProfitMargin } from '../utils/skuBarcodeUtils';
+import { 
+  generateAutoSku, 
+  generateAutoBarcode, 
+  checkDuplicateItem, 
+  generateUniqueSku, 
+  generateUniqueBarcode, 
+  isCostUnknown, 
+  formatCostPrice, 
+  calculateProfitMargin 
+} from '../utils/skuBarcodeUtils';
 import { getFullStationeryCatalog, SAPPY_STATIONERY_CATALOG } from '../data/stationeryCatalog';
 import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
 import { getAmharicStationeryName, extractBilingualNames, isEthiopicText } from '../utils/amharicUtils';
@@ -614,9 +624,11 @@ export const InventoryList: React.FC = () => {
           }}
           onSave={(itemData) => {
             if (editingItem) {
-              updateItem(editingItem.id, itemData);
+              const success = updateItem(editingItem.id, itemData);
+              if (!success) return;
             } else {
-              addItem(itemData);
+              const res = addItem(itemData);
+              if (!res) return;
             }
             setIsAddModalOpen(false);
             setEditingItem(null);
@@ -887,25 +899,45 @@ export const InventoryList: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Summary Bar */}
-                  <div className="grid grid-cols-3 gap-2 text-center p-2 bg-slate-50 rounded-lg border border-slate-200 text-[11px]">
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Total Products</span>
-                      <span className="font-bold text-slate-800">{importPreviewItems.length}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Priced Items</span>
-                      <span className="font-bold text-emerald-700">
-                        {importPreviewItems.filter(i => (i.sellingPrice || 0) > 0).length} / {importPreviewItems.length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Total Stock (Pcs)</span>
-                      <span className="font-bold text-blue-700">
-                        {importPreviewItems.reduce((acc, i) => acc + (i.stock || 0), 0)}
-                      </span>
-                    </div>
-                  </div>
+                  {/* Summary Bar with Duplicate Restriction Insights */}
+                  {(() => {
+                    const duplicateCount = importPreviewItems.filter(p => {
+                      const pBarcode = (p.barcode || '').trim().toLowerCase();
+                      const pSku = (p.sku || '').trim().toLowerCase();
+                      const pName = (p.name || '').trim().toLowerCase();
+                      return items.some(existing => 
+                        (pBarcode && (existing.barcode || '').trim().toLowerCase() === pBarcode) ||
+                        (pSku && (existing.sku || '').trim().toLowerCase() === pSku) ||
+                        (pName && existing.name.trim().toLowerCase() === pName)
+                      );
+                    }).length;
+                    const newCount = importPreviewItems.length - duplicateCount;
+
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px]">
+                        <div>
+                          <span className="text-slate-500 block text-[10px]">Total Parsed</span>
+                          <span className="font-bold text-slate-800">{importPreviewItems.length}</span>
+                        </div>
+                        <div>
+                          <span className="text-emerald-700 block text-[10px] font-semibold">New Items</span>
+                          <span className="font-bold text-emerald-800">+{newCount}</span>
+                        </div>
+                        <div>
+                          <span className="text-amber-700 block text-[10px] font-semibold">Duplicates Restricted</span>
+                          <span className="font-bold text-amber-800">
+                            {duplicateCount > 0 ? `${duplicateCount} (Merge Stock)` : '0'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block text-[10px]">Total Units</span>
+                          <span className="font-bold text-blue-700">
+                            {importPreviewItems.reduce((acc, i) => acc + (i.stock || 0), 0)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
                     <table className="w-full text-left text-[11px]">
@@ -920,16 +952,33 @@ export const InventoryList: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {importPreviewItems.slice(0, 30).map((p, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="py-1.5 px-2.5 font-mono text-[10px] text-slate-600">{p.sku}</td>
-                            <td className="py-1.5 px-2.5 font-medium truncate max-w-[180px]">
-                              <div>{p.name}</div>
-                              {p.nameAmharic && (
-                                <div className="text-[10px] text-emerald-800 truncate font-normal">{p.nameAmharic}</div>
-                              )}
-                            </td>
-                            <td className="py-1.5 px-2.5 text-slate-500">{p.category}</td>
+                        {importPreviewItems.slice(0, 30).map((p, idx) => {
+                          const pBarcode = (p.barcode || '').trim().toLowerCase();
+                          const pSku = (p.sku || '').trim().toLowerCase();
+                          const pName = (p.name || '').trim().toLowerCase();
+                          const isExistingMatch = items.some(existing => 
+                            (pBarcode && (existing.barcode || '').trim().toLowerCase() === pBarcode) ||
+                            (pSku && (existing.sku || '').trim().toLowerCase() === pSku) ||
+                            (pName && existing.name.trim().toLowerCase() === pName)
+                          );
+
+                          return (
+                            <tr key={idx} className={`hover:bg-slate-50 ${isExistingMatch ? 'bg-amber-50/40' : ''}`}>
+                              <td className="py-1.5 px-2.5 font-mono text-[10px] text-slate-600">{p.sku}</td>
+                              <td className="py-1.5 px-2.5 font-medium truncate max-w-[200px]">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="truncate">{p.name}</span>
+                                  {isExistingMatch && (
+                                    <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="Item already exists in catalog. Stock will be merged to prevent duplicate creation.">
+                                      Merge Stock
+                                    </span>
+                                  )}
+                                </div>
+                                {p.nameAmharic && (
+                                  <div className="text-[10px] text-emerald-800 truncate font-normal">{p.nameAmharic}</div>
+                                )}
+                              </td>
+                              <td className="py-1.5 px-2.5 text-slate-500">{p.category}</td>
                             <td className="py-1.5 px-2.5 text-right font-mono">
                               <input
                                 type="number"
@@ -977,7 +1026,8 @@ export const InventoryList: React.FC = () => {
                               />
                             </td>
                           </tr>
-                        ))}
+                        );
+                      })}
                       </tbody>
                     </table>
                     {importPreviewItems.length > 30 && (
@@ -1091,12 +1141,12 @@ interface AddItemModalProps {
 }
 
 const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClose, onSave }) => {
-  const { settings } = useApp();
+  const { settings, items, addToast } = useApp();
   const [name, setName] = useState(initialItem?.name || '');
   const [nameAmharic, setNameAmharic] = useState(initialItem?.nameAmharic || '');
   const [category, setCategory] = useState(initialItem?.category || 'General');
-  const [sku, setSku] = useState(initialItem?.sku || generateAutoSku(initialItem?.category || 'General', initialItem?.name));
-  const [barcode, setBarcode] = useState(initialItem?.barcode || generateAutoBarcode());
+  const [sku, setSku] = useState(initialItem?.sku || generateUniqueSku(initialItem?.category || 'General', initialItem?.name, items));
+  const [barcode, setBarcode] = useState(initialItem?.barcode || generateUniqueBarcode(items));
   const [costPrice, setCostPrice] = useState(initialItem?.costPrice?.toString() || '');
   const [sellingPrice, setSellingPrice] = useState(initialItem?.sellingPrice?.toString() || '');
   const [stock, setStock] = useState(initialItem?.stock?.toString() || '10');
@@ -1115,12 +1165,32 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
   const price = parseFloat(sellingPrice) || 0;
   const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
 
+  // Real-time Duplicate Detection
+  const currentItemId = initialItem?.id;
+  const normName = name.trim().toLowerCase();
+  const normSku = sku.trim().toLowerCase();
+  const normBarcode = barcode.trim().toLowerCase();
+
+  const nameDuplicate = normName 
+    ? items.find(i => (!currentItemId || i.id !== currentItemId) && i.name.trim().toLowerCase() === normName)
+    : null;
+
+  const skuDuplicate = normSku
+    ? items.find(i => (!currentItemId || i.id !== currentItemId) && (i.sku || '').trim().toLowerCase() === normSku)
+    : null;
+
+  const barcodeDuplicate = normBarcode
+    ? items.find(i => (!currentItemId || i.id !== currentItemId) && (i.barcode || '').trim().toLowerCase() === normBarcode)
+    : null;
+
+  const hasDuplicateConflict = Boolean(nameDuplicate || skuDuplicate || barcodeDuplicate);
+
   const handleGenerateBarcode = () => {
-    setBarcode(generateAutoBarcode());
+    setBarcode(generateUniqueBarcode(items));
   };
 
   const handleGenerateSku = () => {
-    setSku(generateAutoSku(category, name));
+    setSku(generateUniqueSku(category, name, items));
   };
 
   const handleAutoTranslateAmharic = () => {
@@ -1134,8 +1204,17 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
     e.preventDefault();
     if (!name.trim()) return;
 
-    const finalSku = sku.trim() || generateAutoSku(category, name);
-    const finalBarcode = barcode.trim() || generateAutoBarcode();
+    if (hasDuplicateConflict) {
+      const issues: string[] = [];
+      if (nameDuplicate) issues.push(`Item name "${nameDuplicate.name}" already exists`);
+      if (skuDuplicate) issues.push(`SKU "${sku.trim()}" already exists`);
+      if (barcodeDuplicate) issues.push(`Barcode "${barcode.trim()}" already exists`);
+      addToast('error', 'Duplicate Restricted', `Cannot save: ${issues.join(' • ')}`);
+      return;
+    }
+
+    const finalSku = sku.trim() || generateUniqueSku(category, name, items);
+    const finalBarcode = barcode.trim() || generateUniqueBarcode(items);
 
     onSave({
       sku: finalSku,
@@ -1195,13 +1274,23 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                     if (autoAmharic) setNameAmharic(autoAmharic);
                   }
                   if (!initialItem && !sku) {
-                    setSku(generateAutoSku(category, parsed.name));
+                    setSku(generateUniqueSku(category, parsed.name, items));
                   }
                 }}
                 placeholder="e.g. Oil Paints (Tubes), Metal Ruler"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500"
+                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 focus:outline-none ${
+                  nameDuplicate ? 'border-rose-400 bg-rose-50/40 focus:border-rose-500' : 'border-slate-200 focus:border-emerald-500'
+                }`}
                 required
               />
+              {nameDuplicate && (
+                <div className="mt-1 p-2 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-800 flex items-start gap-1.5 animate-in fade-in">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Duplicate Name Restricted:</span> "{nameDuplicate.name}" is already cataloged (SKU: <code>{nameDuplicate.sku}</code>).
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -1238,7 +1327,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                 onChange={(e) => {
                   setCategory(e.target.value);
                   if (!initialItem) {
-                    setSku(generateAutoSku(e.target.value, name));
+                    setSku(generateUniqueSku(e.target.value, name, items));
                   }
                 }}
                 placeholder="e.g. Kids Material, Paint, Colors, Notebooks, Ruler, Scissor"
@@ -1275,7 +1364,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                   <button
                     type="button"
                     onClick={handleGenerateSku}
-                    className="text-[10px] text-emerald-700 hover:underline font-bold"
+                    className="text-[10px] text-emerald-700 hover:underline font-bold cursor-pointer"
                   >
                     Auto-Generate
                   </button>
@@ -1285,9 +1374,23 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="e.g. KID-4821"
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className={`w-full px-3 py-2 bg-white border rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none ${
+                    skuDuplicate ? 'border-rose-400 bg-rose-50/30 focus:border-rose-500' : 'border-slate-200 focus:border-emerald-500'
+                  }`}
                   required
                 />
+                {skuDuplicate && (
+                  <div className="mt-1 p-1.5 bg-rose-50 border border-rose-200 rounded text-[10px] text-rose-800 flex items-center justify-between animate-in fade-in">
+                    <span className="truncate mr-1 font-medium"><strong>Duplicate SKU:</strong> Assigned to "{skuDuplicate.name}"</span>
+                    <button
+                      type="button"
+                      onClick={() => setSku(generateUniqueSku(category, name, items))}
+                      className="px-1.5 py-0.5 bg-rose-200 hover:bg-rose-300 text-rose-900 font-bold rounded text-[9px] shrink-0 cursor-pointer transition-colors"
+                    >
+                      Auto-Fix
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1296,7 +1399,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                   <button
                     type="button"
                     onClick={handleGenerateBarcode}
-                    className="text-[10px] text-emerald-700 hover:underline font-bold"
+                    className="text-[10px] text-emerald-700 hover:underline font-bold cursor-pointer"
                   >
                     Generate Barcode
                   </button>
@@ -1306,9 +1409,23 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
                   placeholder="e.g. 8901234567890"
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className={`w-full px-3 py-2 bg-white border rounded-lg text-xs font-mono text-slate-900 focus:outline-none ${
+                    barcodeDuplicate ? 'border-rose-400 bg-rose-50/30 focus:border-rose-500' : 'border-slate-200 focus:border-emerald-500'
+                  }`}
                   required
                 />
+                {barcodeDuplicate && (
+                  <div className="mt-1 p-1.5 bg-rose-50 border border-rose-200 rounded text-[10px] text-rose-800 flex items-center justify-between animate-in fade-in">
+                    <span className="truncate mr-1 font-medium"><strong>Duplicate Barcode:</strong> Used by "{barcodeDuplicate.name}"</span>
+                    <button
+                      type="button"
+                      onClick={() => setBarcode(generateUniqueBarcode(items))}
+                      className="px-1.5 py-0.5 bg-rose-200 hover:bg-rose-300 text-rose-900 font-bold rounded text-[9px] shrink-0 cursor-pointer transition-colors"
+                    >
+                      Auto-Fix
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1416,20 +1533,37 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
           </div>
 
           {/* Footer Buttons */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200 -mx-6 -mb-6 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-emerald-950/20"
-            >
-              {initialItem ? 'Save Changes' : 'Catalog Item'}
-            </button>
+          <div className="p-4 bg-slate-50 border-t border-slate-200 -mx-6 -mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              {hasDuplicateConflict && (
+                <div className="text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Cannot add duplicate: Please fix conflicting code or name</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={hasDuplicateConflict}
+                className={`px-5 py-2 text-white rounded-xl text-xs font-bold shadow-md transition-all ${
+                  hasDuplicateConflict
+                    ? 'bg-slate-400 cursor-not-allowed opacity-60'
+                    : 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-950/20 cursor-pointer'
+                }`}
+              >
+                {hasDuplicateConflict 
+                  ? 'Duplicate Restricted' 
+                  : initialItem ? 'Save Changes' : 'Catalog Item'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

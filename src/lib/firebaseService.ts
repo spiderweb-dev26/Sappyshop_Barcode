@@ -186,29 +186,50 @@ export async function fetchCloudData(): Promise<{
 } | null> {
   if (!db) return null;
   try {
-    const itemsSnap = await getDocs(collection(db, COLLECTIONS.ITEMS));
-    const items = itemsSnap.docs.map(d => d.data() as InventoryItem);
+    const [
+      itemsResult,
+      salesResult,
+      usersResult,
+      expensesResult,
+      movResult,
+      logsResult,
+      settingsResult,
+      stateResult
+    ] = await Promise.allSettled([
+      getDocs(collection(db, COLLECTIONS.ITEMS)),
+      getDocs(collection(db, COLLECTIONS.SALES)),
+      getDocs(collection(db, COLLECTIONS.USERS)),
+      getDocs(collection(db, COLLECTIONS.EXPENSES)),
+      getDocs(collection(db, COLLECTIONS.MOVEMENTS)),
+      getDocs(query(collection(db, COLLECTIONS.LOGS), limit(200))),
+      getDoc(doc(db, COLLECTIONS.SETTINGS, 'store_config')),
+      getDoc(doc(db, COLLECTIONS.SETTINGS, 'system_state'))
+    ]);
 
-    const salesSnap = await getDocs(collection(db, COLLECTIONS.SALES));
-    const sales = salesSnap.docs.map(d => d.data() as SaleRecord);
-
-    const usersSnap = await getDocs(collection(db, COLLECTIONS.USERS));
-    const users = usersSnap.docs.map(d => d.data() as User);
-
-    const expensesSnap = await getDocs(collection(db, COLLECTIONS.EXPENSES));
-    const expenses = expensesSnap.docs.map(d => d.data() as ExpenseRecord);
-
-    const movSnap = await getDocs(collection(db, COLLECTIONS.MOVEMENTS));
-    const movements = movSnap.docs.map(d => d.data() as StockMovement);
-
-    const logsSnap = await getDocs(query(collection(db, COLLECTIONS.LOGS), limit(200)));
-    const logs = logsSnap.docs.map(d => d.data() as ActivityLog);
-
-    const settingsSnap = await getDoc(doc(db, COLLECTIONS.SETTINGS, 'store_config'));
-    const settings = settingsSnap.exists() ? (settingsSnap.data() as StoreSettings) : null;
-
-    const stateSnap = await getDoc(doc(db, COLLECTIONS.SETTINGS, 'system_state'));
-    const isCloudReset = stateSnap.exists() ? Boolean(stateSnap.data()?.isReset) : false;
+    const items = itemsResult.status === 'fulfilled' 
+      ? itemsResult.value.docs.map(d => d.data() as InventoryItem)
+      : [];
+    const sales = salesResult.status === 'fulfilled' 
+      ? salesResult.value.docs.map(d => d.data() as SaleRecord)
+      : [];
+    const users = usersResult.status === 'fulfilled' 
+      ? usersResult.value.docs.map(d => d.data() as User)
+      : [];
+    const expenses = expensesResult.status === 'fulfilled' 
+      ? expensesResult.value.docs.map(d => d.data() as ExpenseRecord)
+      : [];
+    const movements = movResult.status === 'fulfilled' 
+      ? movResult.value.docs.map(d => d.data() as StockMovement)
+      : [];
+    const logs = logsResult.status === 'fulfilled' 
+      ? logsResult.value.docs.map(d => d.data() as ActivityLog)
+      : [];
+    const settings = settingsResult.status === 'fulfilled' && settingsResult.value.exists()
+      ? (settingsResult.value.data() as StoreSettings)
+      : null;
+    const isCloudReset = stateResult.status === 'fulfilled' && stateResult.value.exists()
+      ? Boolean(stateResult.value.data()?.isReset)
+      : false;
 
     return {
       items: isCloudReset ? [] : items,

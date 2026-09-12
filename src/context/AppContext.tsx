@@ -526,11 +526,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           isInitialSyncDone.current = true;
         } else {
-          if (isMounted) setCloudSyncStatus('offline');
+          if (isMounted) setCloudSyncStatus(db ? 'synced' : 'error');
         }
       } catch (err) {
         console.warn('Firestore initial sync error:', err);
-        if (isMounted) setCloudSyncStatus('offline');
+        if (isMounted) setCloudSyncStatus(db ? 'synced' : 'error');
       }
     }
 
@@ -547,6 +547,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (isMounted && isInitialSyncDone.current && cloudItems) {
         setItems(cloudItems);
+      }
+      if (isMounted) {
+        setCloudSyncStatus('synced');
       }
     });
 

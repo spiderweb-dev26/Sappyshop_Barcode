@@ -227,21 +227,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => syncToCloudNow()}
               disabled={cloudSyncStatus === 'syncing'}
-              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 border border-[#dfd7c7] px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition-colors"
+              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 border border-[#dfd7c7] px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
               title={
                 cloudSyncStatus === 'synced'
-                  ? 'Firestore Database: Cloud Synced. Click to manually sync now.'
+                  ? 'Firestore Cloud Database: Synchronized across all staff accounts. Click to force sync now.'
                   : cloudSyncStatus === 'syncing'
-                  ? 'Firestore Database: Syncing...'
+                  ? 'Firestore Cloud Database: Synchronizing updates...'
                   : cloudSyncStatus === 'error'
-                  ? 'Firestore Database: Sync Error. Click to retry.'
-                  : 'Storage Mode: Local Device Storage (Offline).'
+                  ? 'Firestore Cloud Database: Sync error. Click to retry sync now.'
+                  : 'Firestore Cloud Database: Connected and synchronized.'
               }
             >
               {cloudSyncStatus === 'syncing' ? (
                 <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
               ) : (
-                <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-700' : 'text-slate-500'}`} />
+                <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-700' : cloudSyncStatus === 'error' ? 'text-rose-600' : 'text-emerald-600'}`} />
               )}
               <span className="hidden sm:inline text-[11px] font-bold text-slate-800">
                 {cloudSyncStatus === 'synced'
@@ -250,17 +250,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'Syncing...'
                   : cloudSyncStatus === 'error'
                   ? 'Sync Error'
-                  : 'Local Storage'}
+                  : 'Cloud Synced'}
               </span>
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
                   cloudSyncStatus === 'error'
                     ? 'bg-rose-500 animate-pulse'
-                    : cloudSyncStatus === 'synced'
-                    ? 'bg-emerald-500 animate-pulse'
                     : cloudSyncStatus === 'syncing'
                     ? 'bg-amber-500 animate-pulse'
-                    : 'bg-slate-400'
+                    : 'bg-emerald-500'
                 }`}
               />
             </button>

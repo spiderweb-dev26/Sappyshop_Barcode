@@ -440,18 +440,16 @@ export const SettingsView: React.FC = () => {
                 ? 'bg-amber-50 text-amber-800 border-amber-200'
                 : cloudSyncStatus === 'error'
                 ? 'bg-rose-50 text-rose-800 border-rose-200'
-                : 'bg-slate-100 text-slate-700 border-slate-200'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
             }`}>
               <span className={`w-2 h-2 rounded-full ${
                 cloudSyncStatus === 'error'
-                  ? 'bg-rose-500'
-                  : cloudSyncStatus === 'synced'
-                  ? 'bg-emerald-500'
+                  ? 'bg-rose-500 animate-pulse'
                   : cloudSyncStatus === 'syncing'
-                  ? 'bg-amber-500'
-                  : 'bg-slate-400'
-              } animate-pulse`} />
-              {cloudSyncStatus === 'synced' ? 'Online & Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : cloudSyncStatus === 'error' ? 'Sync Error' : 'Local Only'}
+                  ? 'bg-amber-500 animate-pulse'
+                  : 'bg-emerald-500'
+              }`} />
+              {cloudSyncStatus === 'synced' ? 'Online & Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : cloudSyncStatus === 'error' ? 'Sync Error' : 'Online & Synced'}
             </span>
           </div>
         </div>

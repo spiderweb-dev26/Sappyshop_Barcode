@@ -43,7 +43,9 @@ export const SettingsView: React.FC = () => {
     syncToCloudNow,
     updateSettings,
     currentUser,
-    updateUserPin
+    updateUserPin,
+    importDatabaseJson,
+    exportDatabaseJson
   } = useApp();
 
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
@@ -92,26 +94,7 @@ export const SettingsView: React.FC = () => {
 
   // Full Database Backup to JSON
   const handleExportDatabase = () => {
-    const payload = {
-      version: '2.0.0',
-      exportedAt: new Date().toISOString(),
-      settings,
-      items,
-      sales,
-      expenses,
-      users,
-      logs,
-      movements,
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sappy_stationary_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addToast('success', 'Backup Exported', 'Full application state downloaded safely.');
+    exportDatabaseJson();
   };
 
   // Restore Database from JSON
@@ -122,19 +105,16 @@ export const SettingsView: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.items && parsed.sales && parsed.settings) {
+        const rawContent = event.target?.result as string;
+        const parsed = JSON.parse(rawContent);
+        if (parsed.items || parsed.sales || parsed.settings) {
           requestMasterAuth({
             title: 'Database Restore Master Authorization',
             actionName: `Restore Database Snapshot from ${file.name}`,
-            description: `Will replace current state with ${parsed.items.length} items, ${parsed.sales.length} sales, and system records.`,
+            description: `Will replace current state with ${parsed.items?.length || 0} items, ${parsed.sales?.length || 0} sales, and system records.`,
             warning: 'This will overwrite existing active transactions with data from the backup file.',
             onSuccess: () => {
-              localStorage.setItem('sappy_stationary_inventory_v1', JSON.stringify(parsed));
-              addToast('success', 'Database Restored', 'Reloading application state...');
-              setTimeout(() => {
-                window.location.reload();
-              }, 600);
+              importDatabaseJson(rawContent);
             }
           });
         } else {
@@ -145,6 +125,9 @@ export const SettingsView: React.FC = () => {
       }
     };
     reader.readAsText(file);
+    if (jsonInputRef.current) {
+      jsonInputRef.current.value = '';
+    }
   };
 
   const handleExecuteFullReset = (e: React.FormEvent) => {

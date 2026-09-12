@@ -228,17 +228,41 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => syncToCloudNow()}
               disabled={cloudSyncStatus === 'syncing'}
               className="hidden lg:flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 border border-[#dfd7c7] px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition-colors"
-              title={`Firestore Database: ${cloudSyncStatus}. Click to manually sync now.`}
+              title={
+                cloudSyncStatus === 'synced'
+                  ? 'Firestore Database: Cloud Synced. Click to manually sync now.'
+                  : cloudSyncStatus === 'syncing'
+                  ? 'Firestore Database: Syncing...'
+                  : cloudSyncStatus === 'error'
+                  ? 'Firestore Database: Sync Error. Click to retry.'
+                  : 'Storage Mode: Local Device Storage (Offline).'
+              }
             >
               {cloudSyncStatus === 'syncing' ? (
                 <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
               ) : (
-                <Cloud className="w-3.5 h-3.5 text-emerald-700" />
+                <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-700' : 'text-slate-500'}`} />
               )}
               <span className="hidden xl:inline text-[11px] font-bold text-slate-800">
-                {cloudSyncStatus === 'synced' ? 'Cloud Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : 'Live Firestore'}
+                {cloudSyncStatus === 'synced'
+                  ? 'Cloud Synced'
+                  : cloudSyncStatus === 'syncing'
+                  ? 'Syncing...'
+                  : cloudSyncStatus === 'error'
+                  ? 'Sync Error'
+                  : 'Local Storage'}
               </span>
-              <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  cloudSyncStatus === 'error'
+                    ? 'bg-rose-500 animate-pulse'
+                    : cloudSyncStatus === 'synced'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : cloudSyncStatus === 'syncing'
+                    ? 'bg-amber-500 animate-pulse'
+                    : 'bg-slate-400'
+                }`}
+              />
             </button>
 
             {/* Fiscal Year Status (Desktop) */}

@@ -269,3 +269,41 @@ export function subscribeToLiveCloudUsers(onUpdate: (users: User[]) => void): ()
     return () => {};
   }
 }
+
+/**
+ * Permanently delete all documents within a cloud collection
+ */
+export async function wipeCloudCollection(collectionName: string): Promise<void> {
+  if (!db) return;
+  try {
+    const snap = await getDocs(collection(db, collectionName));
+    const chunks = [];
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      chunks.push(snap.docs.slice(i, i + 400));
+    }
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      for (const docSnap of chunk) {
+        batch.delete(docSnap.ref);
+      }
+      await batch.commit();
+    }
+  } catch (error) {
+    console.warn(`Firestore: failed to wipe collection ${collectionName}`, error);
+  }
+}
+
+/**
+ * Permanently wipes all inventory items, sales records, expenses, movements, and logs from Firestore
+ */
+export async function wipeCloudDatabase(): Promise<void> {
+  if (!db) return;
+  await Promise.all([
+    wipeCloudCollection(COLLECTIONS.ITEMS),
+    wipeCloudCollection(COLLECTIONS.SALES),
+    wipeCloudCollection(COLLECTIONS.EXPENSES),
+    wipeCloudCollection(COLLECTIONS.MOVEMENTS),
+    wipeCloudCollection(COLLECTIONS.LOGS)
+  ]);
+}
+

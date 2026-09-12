@@ -29,6 +29,7 @@ import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { generateAutoSku, generateAutoBarcode } from '../utils/skuBarcodeUtils';
 import { getItemDisplayImage } from '../utils/imageUtils';
+import { db } from '../lib/firebase';
 import { 
   syncItemToCloud, 
   deleteItemFromCloud, 
@@ -43,7 +44,10 @@ import {
   fetchCloudData, 
   subscribeToLiveCloudItems, 
   subscribeToLiveCloudSales, 
-  subscribeToLiveCloudUsers 
+  subscribeToLiveCloudUsers,
+  wipeCloudDatabase,
+  wipeCloudCollection,
+  COLLECTIONS
 } from '../lib/firebaseService';
 import { 
   hashCredential, 
@@ -214,13 +218,30 @@ try {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Check if system has been explicitly reset to clean slate
+  const isSystemResetActive = (() => {
+    try {
+      return localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+    } catch {
+      return false;
+    }
+  })();
+
   // Load state from localStorage or mock defaults
   const [items, setItems] = useState<InventoryItem[]>(() => {
     try {
+      if (isSystemResetActive) {
+        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_items`);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        return [];
+      }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_items`);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed.map((item: InventoryItem) => ({
             ...item,
             imageUrl: item.imageUrl !== undefined ? item.imageUrl : (INITIAL_ITEMS.find(i => i.id === item.id || i.sku === item.sku)?.imageUrl || undefined)
@@ -229,7 +250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return INITIAL_ITEMS;
     } catch {
-      return INITIAL_ITEMS;
+      return isSystemResetActive ? [] : INITIAL_ITEMS;
     }
   });
 
@@ -238,7 +259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           // Encrypt/hash any legacy plain text PINs
           return parsed.map((u: User) => ({
             ...u,
@@ -291,53 +312,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [sales, setSales] = useState<SaleRecord[]>(() => {
     try {
+      if (isSystemResetActive) {
+        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_sales`);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        return [];
+      }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_sales`);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
       return INITIAL_SALES;
     } catch {
-      return INITIAL_SALES;
+      return isSystemResetActive ? [] : INITIAL_SALES;
     }
   });
 
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
     try {
+      if (isSystemResetActive) {
+        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_expenses`);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        return [];
+      }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_expenses`);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
       return INITIAL_EXPENSES;
     } catch {
-      return INITIAL_EXPENSES;
+      return isSystemResetActive ? [] : INITIAL_EXPENSES;
     }
   });
 
   const [movements, setMovements] = useState<StockMovement[]>(() => {
     try {
+      if (isSystemResetActive) {
+        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_movements`);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        return [];
+      }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_movements`);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
       return INITIAL_MOVEMENTS;
     } catch {
-      return INITIAL_MOVEMENTS;
+      return isSystemResetActive ? [] : INITIAL_MOVEMENTS;
     }
   });
 
   const [logs, setLogs] = useState<ActivityLog[]>(() => {
     try {
+      if (isSystemResetActive) {
+        const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_logs`);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        return [];
+      }
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_logs`);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
       return INITIAL_LOGS;
     } catch {
-      return INITIAL_LOGS;
+      return isSystemResetActive ? [] : INITIAL_LOGS;
     }
   });
 
@@ -398,7 +451,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Cloud Database (Firestore) State
-  const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('syncing');
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>(() => db ? 'syncing' : 'offline');
   const isInitialSyncDone = useRef(false);
 
   // Firestore Cloud Database Initialization & Real-Time Sync
@@ -406,13 +459,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isMounted = true;
 
     async function initFirestore() {
+      if (!db) {
+        if (isMounted) setCloudSyncStatus('offline');
+        return;
+      }
       setCloudSyncStatus('syncing');
       try {
+        const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
         const cloudData = await fetchCloudData();
         if (!isMounted) return;
 
         if (cloudData) {
-          if (cloudData.items.length === 0 && items.length > 0) {
+          if (isReset) {
+            // Local state was explicitly reset to a clean slate.
+            // If the remote cloud database still has residual items or sales, purge them so state never reverts!
+            if (cloudData.items.length > 0 || cloudData.sales.length > 0) {
+              console.log('Synchronizing clean slate state to remote Firestore...');
+              await wipeCloudDatabase();
+            }
+            if (isMounted) setCloudSyncStatus('synced');
+          } else if (cloudData.items.length === 0 && items.length > 0) {
             // First time running with Firestore: seed existing local items & config to cloud!
             console.log('Seeding store items and configuration to Firebase Firestore...');
             await syncAllItemsToCloud(items);
@@ -422,7 +488,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             if (isMounted) setCloudSyncStatus('synced');
           } else if (cloudData.items.length > 0) {
-            // Cloud has data! Load directly from Firestore
+            // Cloud has data and system is not reset! Load directly from Firestore
             setItems(cloudData.items);
             if (cloudData.sales.length > 0) setSales(cloudData.sales);
             if (cloudData.users.length > 0) {
@@ -452,14 +518,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initFirestore();
 
+    if (!db) return;
+
     // Setup live real-time listeners across active POS terminals
     const unsubItems = subscribeToLiveCloudItems((cloudItems) => {
+      const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isReset) return;
       if (isMounted && isInitialSyncDone.current && cloudItems && cloudItems.length > 0) {
         setItems(cloudItems);
       }
     });
 
     const unsubSales = subscribeToLiveCloudSales((cloudSales) => {
+      const isReset = localStorage.getItem(`${LOCAL_STORAGE_KEY}_full_reset`) === 'true';
+      if (isReset) return;
       if (isMounted && isInitialSyncDone.current && cloudSales && cloudSales.length > 0) {
         setSales(cloudSales);
       }
@@ -484,6 +556,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const syncToCloudNow = useCallback(async () => {
+    if (!db) {
+      addToast('info', 'Offline Mode', 'Operating securely with local storage on this terminal.');
+      return;
+    }
     setCloudSyncStatus('syncing');
     try {
       await syncAllItemsToCloud(items);
@@ -1569,6 +1645,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Database Backup / Reset Actions
   const resetAllDataToSample = useCallback(() => {
+    try {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
+    } catch { /* ignore */ }
     setItems(INITIAL_ITEMS);
     setUsers(INITIAL_USERS);
     setCurrentUser(INITIAL_USERS[0]);
@@ -1583,7 +1662,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [logActivity, addToast]);
 
   // 1. FULL RESET: Remove Everything (Complete Clean Slate)
-  const fullResetSystem = useCallback(() => {
+  const fullResetSystem = useCallback(async () => {
+    // 1. Record explicit full reset flag in localStorage so page refresh never resurrects old items
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_full_reset`, 'true');
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
+    } catch (err) {
+      console.warn('LocalStorage error during full reset:', err);
+    }
+
+    // 2. Clear state in memory
     setItems([]);
     setSales([]);
     setExpenses([]);
@@ -1601,16 +1693,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Full System Reset executed by ${currentUser.name}: Removed all inventory catalog items, sales records, expenses, and logs. Clean slate initiated.`
     };
     setLogs([resetLog]);
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([resetLog]));
+    } catch { /* ignore */ }
+
+    // 3. Purge remote Firestore database if connected so remote cloud never reverts local state
+    if (db) {
+      try {
+        setCloudSyncStatus('syncing');
+        await wipeCloudDatabase();
+        await syncLogToCloud(resetLog);
+        setCloudSyncStatus('synced');
+      } catch (err) {
+        console.warn('Firestore cloud wipe error:', err);
+      }
+    }
 
     addToast(
       'warning',
       'Full Reset Complete',
-      'All inventory items, sales records, expenses, and transaction logs have been wiped.'
+      'All inventory items, sales records, expenses, and transaction logs have been permanently wiped.'
     );
   }, [currentUser, addToast]);
 
   // 2. YEAR END RESET: Remove everything except remaining items and unpaid customer credits
-  const yearEndReset = useCallback(() => {
+  const yearEndReset = useCallback(async () => {
     // Retain all items with current on-hand stock
     const preservedItems = items;
 
@@ -1658,6 +1765,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setLogs([rolloverLog]);
 
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify(preservedItems));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(preservedSales));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify(rolloverMovements));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([rolloverLog]));
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
+    } catch { /* ignore */ }
+
+    // Sync year-end cleanup to Firestore if connected
+    if (db) {
+      try {
+        setCloudSyncStatus('syncing');
+        await wipeCloudCollection(COLLECTIONS.EXPENSES);
+        await wipeCloudCollection(COLLECTIONS.MOVEMENTS);
+        await wipeCloudCollection(COLLECTIONS.SALES);
+        for (const s of preservedSales) {
+          await syncSaleToCloud(s);
+        }
+        await syncLogToCloud(rolloverLog);
+        setCloudSyncStatus('synced');
+      } catch (err) {
+        console.warn('Firestore year-end rollover sync error:', err);
+      }
+    }
+
     addToast(
       'success',
       'Year-End Reset Complete!',
@@ -1697,6 +1830,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importDatabaseJson = useCallback((jsonData: string): boolean => {
     try {
       const parsed = JSON.parse(jsonData);
+      try {
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
+      } catch { /* ignore */ }
+
       if (parsed.items && Array.isArray(parsed.items)) setItems(parsed.items);
       if (parsed.users && Array.isArray(parsed.users)) setUsers(parsed.users);
       if (parsed.sales && Array.isArray(parsed.sales)) setSales(parsed.sales);

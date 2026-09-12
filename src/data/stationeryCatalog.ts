@@ -1,4 +1,5 @@
 import { InventoryItem } from '../types';
+import { getAmharicStationeryName } from '../utils/amharicUtils';
 
 export const SAPPY_STATIONERY_CATALOG: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>[] = [
   // Page 1
@@ -281,6 +282,7 @@ export function getFullStationeryCatalog(): InventoryItem[] {
   return SAPPY_STATIONERY_CATALOG.map((item, idx) => ({
     ...item,
     id: `item-etb-${String(idx + 1).padStart(3, '0')}`,
+    nameAmharic: item.nameAmharic || getAmharicStationeryName(item.name, item.category) || undefined,
     imageUrl: item.imageUrl || CATEGORY_DEFAULT_IMAGES[item.category] || undefined,
     createdAt: timestamp,
     updatedAt: timestamp

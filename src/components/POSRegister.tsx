@@ -32,7 +32,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SappyLogoMark } from './SappyLogo';
 import { formatCurrency } from '../utils/currencyUtils';
-import { getItemDisplayImage } from '../utils/imageUtils';
+import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
 
 const SAPPY_PAYMENT_METHODS: { id: PaymentMethod; label: string; subLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'CASH', label: 'Cash', subLabel: 'Direct Cash', icon: Banknote },
@@ -88,6 +88,7 @@ export const POSRegister: React.FC = () => {
       const matchesSearch = 
         !q ||
         (item.name || '').toLowerCase().includes(q) ||
+        (item.nameAmharic || '').toLowerCase().includes(q) ||
         (item.sku || '').toLowerCase().includes(q) ||
         (item.barcode || '').includes(q);
       const matchesCat = selectedCat === 'ALL' || item.category === selectedCat;
@@ -285,6 +286,9 @@ export const POSRegister: React.FC = () => {
                 src={getItemDisplayImage(lastScannedItem.item)}
                 alt={lastScannedItem.item.name}
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(lastScannedItem.item.category, lastScannedItem.item.name);
+                }}
                 className="w-full h-full object-contain p-1"
               />
             </div>
@@ -304,6 +308,11 @@ export const POSRegister: React.FC = () => {
               <h4 className="font-bold text-sm sm:text-base text-white truncate mt-1">
                 {lastScannedItem.item.name}
               </h4>
+              {lastScannedItem.item.nameAmharic && (
+                <p className="text-xs text-emerald-300 font-medium truncate mt-0.5" title={lastScannedItem.item.nameAmharic}>
+                  {lastScannedItem.item.nameAmharic}
+                </p>
+              )}
               <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-300 font-mono">
                 <span className="text-emerald-400 font-extrabold">
                   {formatCurrency(lastScannedItem.item.sellingPrice, settings.currencySymbol)}
@@ -413,6 +422,9 @@ export const POSRegister: React.FC = () => {
                       src={getItemDisplayImage(item)}
                       alt={item.name}
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(item.category, item.name);
+                      }}
                       className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
                     />
                     {/* Cart count badge */}
@@ -430,6 +442,11 @@ export const POSRegister: React.FC = () => {
                     <h3 className="font-bold text-xs text-slate-800 line-clamp-2 mt-0.5 leading-snug">
                       {item.name}
                     </h3>
+                    {item.nameAmharic && (
+                      <p className="text-[10px] text-emerald-800 font-medium truncate mt-0.5" title={item.nameAmharic}>
+                        {item.nameAmharic}
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-end justify-between">
@@ -498,11 +515,17 @@ export const POSRegister: React.FC = () => {
                       src={getItemDisplayImage(item)}
                       alt={item.name}
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(item.category, item.name);
+                      }}
                       className="w-full h-full object-contain p-0.5"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-slate-900 truncate">{item.name}</p>
+                    {item.nameAmharic && (
+                      <p className="text-[10px] text-emerald-800 font-medium truncate">{item.nameAmharic}</p>
+                    )}
                     <p className="text-[11px] text-slate-500 font-mono">
                       {formatCurrency(unitPrice, settings.currencySymbol)} &times; {quantity} {item.unit}
                     </p>

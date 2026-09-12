@@ -30,7 +30,7 @@ import {
 import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { resolveScannedBarcodeOrQr } from '../utils/skuBarcodeUtils';
-import { getItemDisplayImage } from '../utils/imageUtils';
+import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
 import { QuickImageModal } from './QuickImageModal';
 import { InventoryItem } from '../types';
 
@@ -52,7 +52,8 @@ export const BarcodeScannerModal: React.FC = () => {
     setActiveTab,
     settings, 
     addToast,
-    updateItem
+    updateItem,
+    setLastScannedItem
   } = useApp();
 
   const [manualCode, setManualCode] = useState('');
@@ -244,6 +245,7 @@ export const BarcodeScannerModal: React.FC = () => {
     }
 
     setLastScannedItemId(matchedItem.id);
+    setLastScannedItem({ item: matchedItem, timestamp: Date.now() });
 
     // Check if item is already in active cart
     const existingInCart = cart.find(c => c.item.id === matchedItem.id);
@@ -704,11 +706,14 @@ export const BarcodeScannerModal: React.FC = () => {
                       const displayImg = getItemDisplayImage(scanResult.item);
                       const isCustom = Boolean(scanResult.item.imageUrl && scanResult.item.imageUrl.trim().length > 0);
                       return (
-                        <div className="relative w-18 h-18 sm:w-22 sm:h-22 rounded-xl bg-slate-950 border-2 border-emerald-500/70 shrink-0 overflow-hidden flex items-center justify-center shadow-lg group/img">
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 min-w-[5rem] min-h-[5rem] rounded-xl bg-slate-950 border-2 border-emerald-500/70 shrink-0 overflow-hidden flex items-center justify-center shadow-lg group/img">
                           <img
                             src={displayImg}
                             alt={scanResult.item.name}
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(scanResult.item.category, scanResult.item.name);
+                            }}
                             className="w-full h-full object-contain p-1"
                           />
                           <button
@@ -747,6 +752,11 @@ export const BarcodeScannerModal: React.FC = () => {
                       <h4 className="font-bold text-sm sm:text-base text-white truncate mt-1">
                         {scanResult.item.name}
                       </h4>
+                      {scanResult.item.nameAmharic && (
+                        <p className="text-xs text-emerald-300 font-medium truncate mt-0.5" title={scanResult.item.nameAmharic}>
+                          {scanResult.item.nameAmharic}
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
                         <span className="text-emerald-400 font-bold">
                           {formatCurrency(scanResult.item.sellingPrice, settings.currencySymbol)}/ea
@@ -835,11 +845,14 @@ export const BarcodeScannerModal: React.FC = () => {
 
                   <div className="flex items-center gap-3 bg-slate-900/90 p-3 rounded-xl border border-amber-500/30">
                     {/* Duplicate Scanned Product Photo */}
-                    <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-xl bg-slate-950 border-2 border-amber-500/60 shrink-0 overflow-hidden flex items-center justify-center shadow-lg group/img">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 min-w-[5rem] min-h-[5rem] rounded-xl bg-slate-950 border-2 border-amber-500/60 shrink-0 overflow-hidden flex items-center justify-center shadow-lg group/img">
                       <img
                         src={getItemDisplayImage(scanResult.item)}
                         alt={scanResult.item.name}
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(scanResult.item.category, scanResult.item.name);
+                        }}
                         className="w-full h-full object-contain p-1"
                       />
                       <button
@@ -870,6 +883,11 @@ export const BarcodeScannerModal: React.FC = () => {
                       <h4 className="font-bold text-sm text-white truncate mt-0.5">
                         {scanResult.item.name}
                       </h4>
+                      {scanResult.item.nameAmharic && (
+                        <p className="text-xs text-amber-300 font-medium truncate mt-0.5" title={scanResult.item.nameAmharic}>
+                          {scanResult.item.nameAmharic}
+                        </p>
+                      )}
                       <p className="text-xs text-amber-300/90 mt-0.5">
                         Already has <strong>{scanResult.currentQty} unit{scanResult.currentQty !== 1 ? 's' : ''}</strong> in cart ({formatCurrency(scanResult.item.sellingPrice * scanResult.currentQty, settings.currencySymbol)}).
                       </p>
@@ -980,6 +998,9 @@ export const BarcodeScannerModal: React.FC = () => {
                             src={getItemDisplayImage(item)}
                             alt={item.name}
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(item.category, item.name);
+                            }}
                             className="w-full h-full object-contain p-0.5"
                           />
                         </div>
@@ -994,6 +1015,11 @@ export const BarcodeScannerModal: React.FC = () => {
                               </span>
                             )}
                           </div>
+                          {item.nameAmharic && (
+                            <p className="text-[10px] text-emerald-300 font-medium truncate max-w-[140px] sm:max-w-[200px]">
+                              {item.nameAmharic}
+                            </p>
+                          )}
                           <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-mono">
                             <span>{item.sku}</span>
                             <span>&bull;</span>

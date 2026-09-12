@@ -22,7 +22,8 @@ import {
   Printer,
   Boxes,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Languages
 } from 'lucide-react';
 import { ItemImageUploader } from './ItemImageUploader';
 import { QuickImageModal } from './QuickImageModal';
@@ -37,7 +38,8 @@ import {
 import { formatCurrency } from '../utils/currencyUtils';
 import { generateAutoSku, generateAutoBarcode, isCostUnknown, formatCostPrice, calculateProfitMargin } from '../utils/skuBarcodeUtils';
 import { getFullStationeryCatalog, SAPPY_STATIONERY_CATALOG } from '../data/stationeryCatalog';
-import { getItemDisplayImage } from '../utils/imageUtils';
+import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
+import { getAmharicStationeryName, extractBilingualNames, isEthiopicText } from '../utils/amharicUtils';
 
 export const InventoryList: React.FC = () => {
   const { 
@@ -90,6 +92,7 @@ export const InventoryList: React.FC = () => {
     if (!item) return false;
     const matchesSearch = 
       (item.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.nameAmharic || '').toLowerCase().includes(search.toLowerCase()) ||
       (item.sku || '').toLowerCase().includes(search.toLowerCase()) ||
       (item.barcode || '').includes(search) ||
       (item.category || '').toLowerCase().includes(search.toLowerCase());
@@ -414,6 +417,9 @@ export const InventoryList: React.FC = () => {
                                 src={displayImg}
                                 alt={item.name}
                                 referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(item.category, item.name);
+                                }}
                                 className="w-full h-full object-contain p-0.5"
                               />
                               <span className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
@@ -436,11 +442,17 @@ export const InventoryList: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Name */}
+                      {/* Name (English & Amharic) */}
                       <td className="py-3 px-4 max-w-xs">
                         <p className="font-bold text-slate-900 truncate">{item.name}</p>
+                        {item.nameAmharic && (
+                          <p className="text-[11px] text-emerald-800 font-medium truncate flex items-center gap-1 mt-0.5" title={`Amharic: ${item.nameAmharic}`}>
+                            <span className="text-[9px] px-1 py-0.2 bg-emerald-100/80 text-emerald-800 rounded font-sans font-semibold shrink-0">አማ</span>
+                            <span>{item.nameAmharic}</span>
+                          </p>
+                        )}
                         {item.description && (
-                          <p className="text-[11px] text-slate-400 truncate">{item.description}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{item.description}</p>
                         )}
                       </td>
 
@@ -793,12 +805,12 @@ export const InventoryList: React.FC = () => {
               <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 text-[11px] text-blue-900 flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold">Supported Excel Columns:</p>
+                  <p className="font-bold">Supported Excel Columns (Bilingual):</p>
                   <p className="text-blue-800 font-mono mt-0.5">
-                    Name | Category | Selling Price (ETB) | Cost (ETB) | Qty
+                    Name (English) | Amharic Name (የዕቃው ስም) | Category | Selling Price (ETB) | Cost (ETB) | Qty
                   </p>
                   <p className="text-blue-700 text-[10px] mt-0.5">
-                    SKU & Barcodes are auto-generated if omitted. Standard unit: <b>Pcs</b>, Min stock alert: <b>5</b>.
+                    SKU & Barcodes are auto-generated. If Amharic Name is left blank, it is automatically suggested. Standard unit: <b>Pcs</b>, Min alert: <b>5</b>.
                   </p>
                 </div>
               </div>
@@ -911,7 +923,12 @@ export const InventoryList: React.FC = () => {
                         {importPreviewItems.slice(0, 30).map((p, idx) => (
                           <tr key={idx} className="hover:bg-slate-50">
                             <td className="py-1.5 px-2.5 font-mono text-[10px] text-slate-600">{p.sku}</td>
-                            <td className="py-1.5 px-2.5 font-medium truncate max-w-[160px]">{p.name}</td>
+                            <td className="py-1.5 px-2.5 font-medium truncate max-w-[180px]">
+                              <div>{p.name}</div>
+                              {p.nameAmharic && (
+                                <div className="text-[10px] text-emerald-800 truncate font-normal">{p.nameAmharic}</div>
+                              )}
+                            </td>
                             <td className="py-1.5 px-2.5 text-slate-500">{p.category}</td>
                             <td className="py-1.5 px-2.5 text-right font-mono">
                               <input
@@ -1076,6 +1093,7 @@ interface AddItemModalProps {
 const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClose, onSave }) => {
   const { settings } = useApp();
   const [name, setName] = useState(initialItem?.name || '');
+  const [nameAmharic, setNameAmharic] = useState(initialItem?.nameAmharic || '');
   const [category, setCategory] = useState(initialItem?.category || 'General');
   const [sku, setSku] = useState(initialItem?.sku || generateAutoSku(initialItem?.category || 'General', initialItem?.name));
   const [barcode, setBarcode] = useState(initialItem?.barcode || generateAutoBarcode());
@@ -1088,6 +1106,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
 
   React.useEffect(() => {
     setImageUrl(initialItem?.imageUrl);
+    setNameAmharic(initialItem?.nameAmharic || '');
   }, [initialItem]);
 
   if (!isOpen) return null;
@@ -1104,6 +1123,13 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
     setSku(generateAutoSku(category, name));
   };
 
+  const handleAutoTranslateAmharic = () => {
+    const suggested = getAmharicStationeryName(name, category);
+    if (suggested) {
+      setNameAmharic(suggested);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -1115,6 +1141,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
       sku: finalSku,
       barcode: finalBarcode,
       name: name.trim(),
+      nameAmharic: nameAmharic.trim() || undefined,
       category: category.trim() || 'General',
       unit: 'Pcs',
       costPrice: cost,
@@ -1137,7 +1164,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
               <h3 className="font-bold text-sm">
                 {initialItem ? 'Edit Stationery Item' : 'Add New Stationery Item'}
               </h3>
-              <p className="text-[11px] text-emerald-200">Auto-generated SKU & Barcode • Unit: Pcs • Min Alert: 5</p>
+              <p className="text-[11px] text-emerald-200">Bilingual Support (English & Amharic) • Auto SKU & Barcode</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded">
@@ -1146,22 +1173,60 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
-          {/* Name & Category */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Product Name / Title *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (!initialItem && !sku) {
-                  setSku(generateAutoSku(category, e.target.value));
-                }
-              }}
-              placeholder="e.g. Stationery set, Oil Paints, Clear Bag 80 Page, Metal Ruler"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500"
-              required
-            />
+          {/* Name in English & Amharic */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                <span>Product Name (English) *</span>
+                <span className="text-[10px] text-slate-400 font-normal">English</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // If user pasted a bilingual string like "English / Amharic"
+                  const parsed = extractBilingualNames(val, nameAmharic);
+                  setName(parsed.name);
+                  if (parsed.nameAmharic && !nameAmharic) {
+                    setNameAmharic(parsed.nameAmharic);
+                  } else if (!nameAmharic) {
+                    const autoAmharic = getAmharicStationeryName(parsed.name, category);
+                    if (autoAmharic) setNameAmharic(autoAmharic);
+                  }
+                  if (!initialItem && !sku) {
+                    setSku(generateAutoSku(category, parsed.name));
+                  }
+                }}
+                placeholder="e.g. Oil Paints (Tubes), Metal Ruler"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  <Languages className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Amharic Name (የዕቃው ስም)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateAmharic}
+                  className="text-[10px] text-emerald-700 hover:text-emerald-900 hover:underline font-semibold flex items-center gap-0.5"
+                  title="Auto-suggest Amharic translation from catalog dictionary"
+                >
+                  <Sparkles className="w-2.5 h-2.5" /> ራስ-ሰር ተርጉም
+                </button>
+              </div>
+              <input
+                type="text"
+                value={nameAmharic}
+                onChange={(e) => setNameAmharic(e.target.value)}
+                placeholder="ለምሳሌ፦ የዘይት ቀለሞች፣ ማስመሪያ፣ መቀስ"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -6,6 +6,7 @@ import { InventoryItem, SaleRecord, ExpenseRecord, ActivityLog, StoreSettings, g
 import { formatCurrency } from './currencyUtils';
 import { generateAutoSku, generateAutoBarcode } from './skuBarcodeUtils';
 import { SAPPY_STATIONERY_CATALOG } from '../data/stationeryCatalog';
+import { getAmharicStationeryName, extractBilingualNames, isEthiopicText } from './amharicUtils';
 
 /**
  * Normalizes a string for robust fuzzy matching
@@ -13,25 +14,32 @@ import { SAPPY_STATIONERY_CATALOG } from '../data/stationeryCatalog';
 function normalizeString(str: string): string {
   return str
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
+    .replace(/[^a-z0-9\u1200-\u137F]/g, '')
     .trim();
 }
 
 /**
- * Find matching catalog item by product name
+ * Find matching catalog item by product name (English or Amharic)
  */
 function findCatalogMatch(name: string) {
   if (!name || name.trim().length < 2) return null;
   const clean = normalizeString(name);
   
-  // 1. Exact normalized match
-  const exact = SAPPY_STATIONERY_CATALOG.find(c => normalizeString(c.name) === clean);
+  // 1. Exact normalized match against English name or Amharic name
+  const exact = SAPPY_STATIONERY_CATALOG.find(c => {
+    const cClean = normalizeString(c.name);
+    const amharic = c.nameAmharic || getAmharicStationeryName(c.name, c.category);
+    const aClean = normalizeString(amharic);
+    return cClean === clean || aClean === clean;
+  });
   if (exact) return exact;
 
   // 2. Contains match
   const contains = SAPPY_STATIONERY_CATALOG.find(c => {
     const cClean = normalizeString(c.name);
-    return clean.includes(cClean) || cClean.includes(clean);
+    const amharic = c.nameAmharic || getAmharicStationeryName(c.name, c.category);
+    const aClean = normalizeString(amharic);
+    return clean.includes(cClean) || cClean.includes(clean) || (aClean && (clean.includes(aClean) || aClean.includes(clean)));
   });
   if (contains) return contains;
 
@@ -40,12 +48,13 @@ function findCatalogMatch(name: string) {
 
 /**
  * Generates and downloads the official Excel Starter Template matching the stationery catalog
- * Fields: Name, Category, Selling Price (ETB), Cost (ETB), Qty
+ * Fields: Name (English), Amharic Name (የዕቃው ስም), Category, Selling Price (ETB), Cost (ETB), Qty
  * Barcode & SKU are auto-generated on import. Unit is always Pcs. Min stock alert is always 5.
  */
 export function downloadExcelTemplate(currencySymbol: string = 'ETB') {
   const headers = [
-    'Name',
+    'Name (English)',
+    'Amharic Name (የዕቃው ስም)',
     'Category',
     `Selling Price (${currencySymbol})`,
     `Cost (${currencySymbol})`,
@@ -53,39 +62,40 @@ export function downloadExcelTemplate(currencySymbol: string = 'ETB') {
   ];
 
   const sampleData = [
-    ['Stationery set', 'Kids Material', 600, '', 4],
-    ['Oil Paints (Tubes)', 'Paint', 450, '', 3],
-    ['Acrylic Paints (Tubes)', 'Paint', 450, '', 3],
-    ['Watercolor Paints (Tubes)', 'Paint', 450, '', 3],
-    ['Kids Watercolor Sunderland', 'Colors', 160, '', 5],
-    ['Kids Watercolor vendes', 'Colors', 170, '', 9],
-    ['Clear Bag 80 Page', 'File Album', 670, '', 0],
-    ['Clear Bag 30 Page', 'File Album', 450, '', 3],
-    ['Clear Bag 60 page', 'File Album', 550, '', 8],
-    ['Canvas Tape', 'Tape', 350, '', 8],
-    ['Metal Ruler (30cm)', 'Ruler', 300, '', 2],
-    ['Ruler (30cm)', 'Ruler', 80, '', 3],
-    ['Ruler (50cm)', 'Ruler', 80, '', 3],
-    ['DVD Marker', 'Marker', 85, '', 40],
-    ['Highlighter', 'Highlighter', 85, '', 22],
-    ['Gravity Register 25x35', 'Notebooks', 750, 600, 4],
-    ['Gravity Register (200 Sheets)', 'Notebooks', 600, 500, 3],
-    ['Bear Scissors', 'Scissor', 90, '', 8],
-    ['A7 Emoji Notebook', 'Notebook', 100, '', 12],
-    ['Alkaline Battery (9V)', 'Battery', 600, 400, 10],
-    ['Alkaline Battery (AAA)', 'Battery', 200, 134, 12],
-    ['Alkaline Battery (AA)', 'Battery', 200, 134, 10],
-    ['Utility Cutter Knife (Small)', 'Cutter', 120, '', 30],
-    ['Utility Cutter Knife (Large)', 'Cutter', 600, '', 2],
-    ['Scissors (Extra Small)', 'Scissor', 100, '', 14]
+    ['Stationery set', 'የጽሕፈት መሣሪያዎች ስብስብ', 'Kids Material', 600, '', 4],
+    ['Oil Paints (Tubes)', 'የዘይት ቀለሞች (ቱቦ)', 'Paint', 450, '', 3],
+    ['Acrylic Paints (Tubes)', 'አክሪሊክ ቀለሞች', 'Paint', 450, '', 3],
+    ['Watercolor Paints (Tubes)', 'የውሃ ቀለሞች', 'Paint', 450, '', 3],
+    ['Kids Watercolor Sunderland', 'የልጆች የውሃ ቀለም (ሰንደርላንድ)', 'Colors', 160, '', 5],
+    ['Kids Watercolor vendes', 'የልጆች የውሃ ቀለም (ቬንደስ)', 'Colors', 170, '', 9],
+    ['Clear Bag 80 Page', 'ክሊር ባግ 80 ገጽ', 'File Album', 670, '', 0],
+    ['Clear Bag 30 Page', 'ክሊር ባግ 30 ገጽ', 'File Album', 450, '', 3],
+    ['Clear Bag 60 page', 'ክሊር ባግ 60 ገጽ', 'File Album', 550, '', 8],
+    ['Canvas Tape', 'የሸራ ቴፕ', 'Tape', 350, '', 8],
+    ['Metal Ruler (30cm)', 'የብረት ማስመሪያ (30 ሳ.ሜ)', 'Ruler', 300, '', 2],
+    ['Ruler (30cm)', 'ማስመሪያ (30 ሳ.ሜ)', 'Ruler', 80, '', 3],
+    ['Ruler (50cm)', 'ማስመሪያ (50 ሳ.ሜ)', 'Ruler', 80, '', 3],
+    ['DVD Marker', 'ዲቪዲ ማርከር', 'Marker', 85, '', 40],
+    ['Highlighter', 'ሃይላይተር (ማድመቂያ)', 'Highlighter', 85, '', 22],
+    ['Gravity Register 25x35', 'ግራቪቲ ሬጂስተር 25x35', 'Notebooks', 750, 600, 4],
+    ['Gravity Register (200 Sheets)', 'ግራቪቲ ሬጂስተር (200 ቅጠል)', 'Notebooks', 600, 500, 3],
+    ['Bear Scissors', 'የድብ ቅርጽ መቀስ', 'Scissor', 90, '', 8],
+    ['A7 Emoji Notebook', 'A7 ኢሞጂ ማስታወሻ ደብተር', 'Notebook', 100, '', 12],
+    ['Alkaline Battery (9V)', 'አልካላይን ባትሪ (9V)', 'Battery', 600, 400, 10],
+    ['Alkaline Battery (AAA)', 'አልካላይን ባትሪ (AAA)', 'Battery', 200, 134, 12],
+    ['Alkaline Battery (AA)', 'አልካላይን ባትሪ (AA)', 'Battery', 200, 134, 10],
+    ['Utility Cutter Knife (Small)', 'መቁረጫ ካተር ቢላዋ (ትንሽ)', 'Cutter', 120, '', 30],
+    ['Utility Cutter Knife (Large)', 'መቁረጫ ካተር ቢላዋ (ትልቅ)', 'Cutter', 600, '', 2],
+    ['Scissors (Extra Small)', 'መቀስ (በጣም ትንሽ)', 'Scissor', 100, '', 14]
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
 
   // Set comfortable column widths
   ws['!cols'] = [
-    { wch: 38 }, // Name
-    { wch: 22 }, // Category
+    { wch: 34 }, // Name (English)
+    { wch: 32 }, // Amharic Name (የዕቃው ስም)
+    { wch: 20 }, // Category
     { wch: 22 }, // Selling Price (ETB)
     { wch: 18 }, // Cost (ETB)
     { wch: 14 }  // Qty
@@ -96,27 +106,28 @@ export function downloadExcelTemplate(currencySymbol: string = 'ETB') {
 
   // Add Instructions Sheet
   const instructions = [
-    ['SAPPY STATIONARY - SIMPLIFIED INVENTORY IMPORT GUIDE'],
+    ['SAPPY STATIONARY - BILINGUAL INVENTORY IMPORT GUIDE (ENGLISH & AMHARIC)'],
     [''],
     ['Key Column Rules:'],
-    ['1. Name: Full product title or description (Required)'],
-    ['2. Category: Classification e.g. Kids Material, Paint, Colors, File Album, Notebooks, Ruler, Scissor (Required)'],
-    [`3. Selling Price (${currencySymbol}): Retail checkout price (Required, numeric)`],
-    [`4. Cost (${currencySymbol}): Purchase/wholesale cost per unit (Optional, numeric)`],
-    ['5. Qty: Current stock on hand count (Required, numeric)'],
+    ['1. Name (English): Product name or title in English (Required, e.g. "Oil Paints", "Metal Ruler")'],
+    ['2. Amharic Name (የዕቃው ስም): Product name in Amharic (Recommended for bilingual labels & receipts, e.g. "የዘይት ቀለሞች", "ማስመሪያ")'],
+    ['3. Category: Classification e.g. Kids Material, Paint, Colors, File Album, Notebooks, Ruler, Scissor (Required)'],
+    [`4. Selling Price (${currencySymbol}): Retail checkout price (Required, numeric)`],
+    [`5. Cost (${currencySymbol}): Purchase/wholesale cost per unit (Optional, numeric)`],
+    ['6. Qty: Current stock on hand count (Required, numeric)'],
     [''],
     ['Automated System Defaults:'],
     ['• SKU & BARCODE: Automatically generated for every item using unique retail identifiers.'],
     ['• UNIT: Always fixed to "Pcs".'],
     ['• LOW STOCK ALERT: Always set to 5 units minimum.'],
-    ['• BRAND, SUPPLIER, BATCH & EXPIRY: Simplified out for rapid stationery management.'],
+    ['• AUTO-TRANSLATION: If Amharic Name is left blank, Sappy Stationery automatically suggests or infers it based on the English name and stationery dictionary.'],
     [''],
     ['Tips:'],
     ['- Save your spreadsheet as .xlsx or .csv.'],
     ['- You can upload up to 5,000 items in a single batch file.']
   ];
   const wsInstructions = XLSX.utils.aoa_to_sheet(instructions);
-  wsInstructions['!cols'] = [{ wch: 85 }];
+  wsInstructions['!cols'] = [{ wch: 95 }];
   XLSX.utils.book_append_sheet(wb, wsInstructions, 'Instructions');
 
   XLSX.writeFile(wb, 'SappyStationary_Inventory_Template.xlsx');
@@ -190,7 +201,8 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
         const errors: string[] = [];
 
         // Alias dictionaries for flexible header detection
-        const nameAliases = ['Name', 'Product Name', 'Item Name', 'Product', 'Title', 'Item', 'Stationery Item', 'Description', 'Item Description', 'Products'];
+        const nameAliases = ['Name', 'Product Name', 'Item Name', 'Product', 'Title', 'Item', 'Stationery Item', 'Description', 'Item Description', 'Products', 'English Name', 'Name (English)'];
+        const amharicAliases = ['Amharic Name', 'Amharic', 'Name (Amharic)', 'Name Amharic', 'የዕቃው ስም', 'የአማርኛ ስም', 'ስም (አማርኛ)', 'AmharicName', 'Amharic Description', 'Local Name', 'Amharic Title'];
         const catAliases = ['Category', 'Cat', 'Department', 'Group', 'Type', 'Section', 'Classification'];
         const sellAliases = ['Selling Price (ETB)', 'Selling Price(ETB)', 'Selling Price', 'Price (ETB)', 'Price(ETB)', 'Price', 'SellingPrice', 'Unit Price', 'Retail Price', 'Retail', 'Sales Price', 'Selling Price ($)', 'Sell Price', 'Rate', 'SP', 'S.P', 'Price ETB', 'Price in ETB', 'Amount'];
         const costAliases = ['Cost (ETB)', 'Cost(ETB)', 'Cost Price (ETB)', 'Cost Price(ETB)', 'Cost Price', 'CostPrice', 'Cost', 'Cost ($)', 'Purchase Price', 'Buying Price', 'Wholesale Price', 'CP', 'C.P'];
@@ -210,6 +222,7 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
           // Find header row and determine column indexes
           let headerRowIndex = -1;
           let colName = -1;
+          let colAmharic = -1;
           let colCat = -1;
           let colSell = -1;
           let colCost = -1;
@@ -222,7 +235,7 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
             const joined = rowArr.map(c => String(c).toLowerCase().trim()).join(' ');
 
             if (
-              (joined.includes('name') || joined.includes('product') || joined.includes('item') || joined.includes('description')) &&
+              (joined.includes('name') || joined.includes('product') || joined.includes('item') || joined.includes('description') || joined.includes('የዕቃው') || joined.includes('አማርኛ')) &&
               (joined.includes('price') || joined.includes('selling') || joined.includes('category') || joined.includes('cost') || joined.includes('qty') || joined.includes('stock'))
             ) {
               headerRowIndex = r;
@@ -232,7 +245,11 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
                 const cellStr = String(cellVal || '').toLowerCase().trim();
                 const cellClean = cellStr.replace(/[^a-z0-9]/g, '');
 
-                if (colName === -1 && (cellStr.includes('name') || cellStr.includes('product') || cellStr.includes('item') || cellStr.includes('description'))) {
+                const isAmharicHeader = cellStr.includes('amharic') || cellStr.includes('አማርኛ') || cellStr.includes('የዕቃው ስም') || amharicAliases.some(alias => cellStr === alias.toLowerCase() || cellClean === alias.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+                if (colAmharic === -1 && isAmharicHeader) {
+                  colAmharic = cIdx;
+                } else if (colName === -1 && !isAmharicHeader && (cellStr.includes('name') || cellStr.includes('product') || cellStr.includes('item') || cellStr.includes('description') || nameAliases.some(a => cellStr === a.toLowerCase()))) {
                   colName = cIdx;
                 } else if (colCat === -1 && (cellStr.includes('category') || cellStr.includes('cat') || cellStr.includes('group') || cellStr.includes('dept'))) {
                   colCat = cIdx;
@@ -261,18 +278,28 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
               const rowCells = (rawAoa[r] || []) as unknown[];
               if (!rowCells || rowCells.length === 0) continue;
 
-              let name = colName !== -1 ? String(rowCells[colName] || '').trim() : '';
+              let rawName = colName !== -1 ? String(rowCells[colName] || '').trim() : '';
+              let rawAmharic = colAmharic !== -1 ? String(rowCells[colAmharic] || '').trim() : '';
               
               // If name column is empty, check if first non-empty string cell is the name
-              if (!name) {
+              if (!rawName) {
                 const firstStrCell = rowCells.find(c => typeof c === 'string' && c.trim().length > 1 && isNaN(Number(c)));
                 if (firstStrCell) {
-                  name = String(firstStrCell).trim();
+                  rawName = String(firstStrCell).trim();
                 }
               }
 
-              if (!name || name.toLowerCase() === 'name' || name.toLowerCase() === 'item name') {
+              if (!rawName || rawName.toLowerCase() === 'name' || rawName.toLowerCase() === 'item name') {
                 continue; // Skip empty rows or repeated headers
+              }
+
+              // Extract bilingual names
+              const bilingual = extractBilingualNames(rawName, rawAmharic);
+              let name = bilingual.name;
+              let nameAmharic = bilingual.nameAmharic;
+
+              if (!name && nameAmharic) {
+                name = nameAmharic;
               }
 
               let category = colCat !== -1 ? String(rowCells[colCat] || '').trim() : '';
@@ -309,7 +336,8 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
 
               // INTELLIGENT MASTER CATALOG RECOVERY:
               // Cross-reference against Sappy's stationery catalog if price is missing or 0
-              const catalogMatch = findCatalogMatch(name);
+              let imageUrl: string | undefined = undefined;
+              const catalogMatch = findCatalogMatch(name) || (nameAmharic ? findCatalogMatch(nameAmharic) : null);
               if (catalogMatch) {
                 if (sellingPrice === 0) {
                   sellingPrice = catalogMatch.sellingPrice;
@@ -326,6 +354,16 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
                 if (!barcode) {
                   barcode = catalogMatch.barcode;
                 }
+                if (!nameAmharic && (catalogMatch.nameAmharic || getAmharicStationeryName(catalogMatch.name, catalogMatch.category))) {
+                  nameAmharic = catalogMatch.nameAmharic || getAmharicStationeryName(catalogMatch.name, catalogMatch.category);
+                }
+                if (catalogMatch.imageUrl) {
+                  imageUrl = catalogMatch.imageUrl;
+                }
+              }
+
+              if (!nameAmharic) {
+                nameAmharic = getAmharicStationeryName(name, category);
               }
 
               if (!category) category = 'General';
@@ -337,44 +375,73 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
                 sku,
                 barcode,
                 name,
+                nameAmharic: nameAmharic || undefined,
                 category,
                 unit: 'Pcs',
                 costPrice,
                 sellingPrice,
                 stock,
                 minStockAlert: 5,
+                imageUrl,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
               });
             }
           } else {
             // Positional fallback (Headerless table)
-            // Expecting: Col 0: Name, Col 1: Category, Col 2: Selling Price, Col 3: Cost, Col 4: Qty
+            // Supports:
+            // 6 columns: [Name, Amharic Name, Category, Selling Price, Cost, Qty]
+            // 5 columns: [Name, Category, Selling Price, Cost, Qty] OR [Name, Amharic Name, Category, Price, Qty]
             rawAoa.forEach((rowCells) => {
               const cells = (rowCells || []) as unknown[];
               if (!cells || cells.length === 0) return;
 
-              const name = String(cells[0] || '').trim();
-              if (!name || name.toLowerCase() === 'name') return;
+              const rawName = String(cells[0] || '').trim();
+              if (!rawName || rawName.toLowerCase() === 'name') return;
 
-              let category = String(cells[1] || 'General').trim();
-              let sellVal = parseCleanNumber(cells[2]);
+              let rawAmharic = '';
+              let category = 'General';
+              let sellVal = 0;
               let costVal = 0;
               let qtyVal = 0;
 
-              if (cells.length >= 5) {
-                costVal = parseCleanNumber(cells[3]);
-                qtyVal = Math.round(parseCleanNumber(cells[4]));
+              if (cells.length >= 6) {
+                // [Name, Amharic Name, Category, Selling Price, Cost, Qty]
+                rawAmharic = String(cells[1] || '').trim();
+                category = String(cells[2] || 'General').trim();
+                sellVal = parseCleanNumber(cells[3]);
+                costVal = parseCleanNumber(cells[4]);
+                qtyVal = Math.round(parseCleanNumber(cells[5]));
+              } else if (cells.length === 5) {
+                const cell1Str = String(cells[1] || '').trim();
+                if (isEthiopicText(cell1Str)) {
+                  rawAmharic = cell1Str;
+                  category = String(cells[2] || 'General').trim();
+                  sellVal = parseCleanNumber(cells[3]);
+                  qtyVal = Math.round(parseCleanNumber(cells[4]));
+                } else {
+                  category = cell1Str || 'General';
+                  sellVal = parseCleanNumber(cells[2]);
+                  costVal = parseCleanNumber(cells[3]);
+                  qtyVal = Math.round(parseCleanNumber(cells[4]));
+                }
               } else if (cells.length === 4) {
-                // If 4 columns, could be [Name, Category, Selling Price, Qty]
+                category = String(cells[1] || 'General').trim();
+                sellVal = parseCleanNumber(cells[2]);
                 qtyVal = Math.round(parseCleanNumber(cells[3]));
               } else if (cells.length === 3) {
+                sellVal = parseCleanNumber(cells[1]);
                 qtyVal = Math.round(parseCleanNumber(cells[2]));
-                sellVal = 0;
               }
 
+              const bilingual = extractBilingualNames(rawName, rawAmharic);
+              let name = bilingual.name;
+              let nameAmharic = bilingual.nameAmharic;
+              if (!name && nameAmharic) name = nameAmharic;
+
               // Cross-reference master catalog
-              const catalogMatch = findCatalogMatch(name);
+              let imageUrl: string | undefined = undefined;
+              const catalogMatch = findCatalogMatch(name) || (nameAmharic ? findCatalogMatch(nameAmharic) : null);
               let sku = '';
               let barcode = '';
 
@@ -384,8 +451,17 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
                 if (!category || category === 'General') category = catalogMatch.category;
                 sku = catalogMatch.sku;
                 barcode = catalogMatch.barcode;
+                if (!nameAmharic && (catalogMatch.nameAmharic || getAmharicStationeryName(catalogMatch.name, catalogMatch.category))) {
+                  nameAmharic = catalogMatch.nameAmharic || getAmharicStationeryName(catalogMatch.name, catalogMatch.category);
+                }
+                if (catalogMatch.imageUrl) imageUrl = catalogMatch.imageUrl;
               }
 
+              if (!nameAmharic) {
+                nameAmharic = getAmharicStationeryName(name, category);
+              }
+
+              if (!category) category = 'General';
               if (!sku) sku = generateAutoSku(category, name);
               if (!barcode) barcode = generateAutoBarcode();
 
@@ -394,12 +470,14 @@ export async function parseExcelOrCsvFile(file: File): Promise<{ items: Partial<
                 sku,
                 barcode,
                 name,
+                nameAmharic: nameAmharic || undefined,
                 category: category || 'General',
                 unit: 'Pcs',
                 costPrice: costVal,
                 sellingPrice: sellVal,
                 stock: qtyVal,
                 minStockAlert: 5,
+                imageUrl,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
               });
@@ -480,6 +558,7 @@ export function exportInventoryToExcel(items: InventoryItem[], settings: StoreSe
       'SKU': item.sku,
       'Barcode': item.barcode,
       'Item Name': item.name,
+      'Amharic Name (የዕቃው ስም)': item.nameAmharic || '',
       'Category': item.category,
       'Unit': 'Pcs',
       'Stock on Hand': item.stock,

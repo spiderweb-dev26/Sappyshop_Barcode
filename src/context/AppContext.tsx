@@ -28,6 +28,7 @@ import {
 import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { generateAutoSku, generateAutoBarcode } from '../utils/skuBarcodeUtils';
+import { getItemDisplayImage } from '../utils/imageUtils';
 import { 
   syncItemToCloud, 
   deleteItemFromCloud, 
@@ -91,6 +92,7 @@ interface AppContextType {
   toasts: ToastNotification[];
   lastScannedBarcode: string | null;
   lastScannedItem: { item: InventoryItem; timestamp: number } | null;
+  setLastScannedItem: (val: { item: InventoryItem; timestamp: number } | null) => void;
   clearLastScannedItem: () => void;
   isScannerModalOpen: boolean;
   setIsScannerModalOpen: (open: boolean) => void;
@@ -1422,6 +1424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (matchedItem) {
       setLastScannedItem({ item: matchedItem, timestamp: Date.now() });
+      const displayImg = getItemDisplayImage(matchedItem);
 
       if (activeTab === 'pos' || activeTab === 'checkout') {
         // Check if item is already in cart
@@ -1438,7 +1441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           'success', 
           `Scanned: ${matchedItem.name}`, 
           `SKU: ${matchedItem.sku} | ${formatCurrency(matchedItem.sellingPrice, settings.currencySymbol)}`,
-          matchedItem.imageUrl
+          displayImg
         );
       } else {
         if (settings.enableSoundEffects) soundEffects.playScanSuccess();
@@ -1446,7 +1449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           'info', 
           `Found: ${matchedItem.name}`, 
           `SKU: ${matchedItem.sku} | Stock: ${matchedItem.stock} | Price: ${formatCurrency(matchedItem.sellingPrice, settings.currencySymbol)}`,
-          matchedItem.imageUrl
+          displayImg
         );
       }
       return true;
@@ -1729,6 +1732,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         lastScannedBarcode,
         lastScannedItem,
+        setLastScannedItem,
         clearLastScannedItem,
         isScannerModalOpen,
         setIsScannerModalOpen,

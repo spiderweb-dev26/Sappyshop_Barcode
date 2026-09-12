@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/currencyUtils';
-import { getItemDisplayImage } from '../utils/imageUtils';
+import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
 import { AlertCircle, Plus, X, ShoppingCart, Package, Barcode as BarcodeIcon } from 'lucide-react';
 
 export const DuplicateScanModal: React.FC = () => {
@@ -61,11 +61,14 @@ export const DuplicateScanModal: React.FC = () => {
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
             <div className="flex items-start gap-3">
               {/* Product Image */}
-              <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center shadow-xs">
+              <div className="w-16 h-16 rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden flex items-center justify-center shadow-xs">
                 <img
                   src={getItemDisplayImage(item)}
                   alt={item.name}
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(item.category, item.name);
+                  }}
                   className="w-full h-full object-contain p-1"
                 />
               </div>
@@ -75,6 +78,11 @@ export const DuplicateScanModal: React.FC = () => {
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{item.category}</p>
                     <h4 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">{item.name}</h4>
+                    {item.nameAmharic && (
+                      <p className="text-xs text-emerald-800 font-medium truncate mt-0.5" title={item.nameAmharic}>
+                        {item.nameAmharic}
+                      </p>
+                    )}
                   </div>
                   <span className="font-bold text-sm text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
                     {formatCurrency(item.sellingPrice, settings.currencySymbol)}

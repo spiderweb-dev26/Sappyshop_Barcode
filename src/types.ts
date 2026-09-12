@@ -34,6 +34,7 @@ export interface InventoryItem {
   sku: string;
   barcode: string;
   name: string;
+  nameAmharic?: string; // Product name in Amharic (የዕቃው ስም በአማርኛ)
   category: string;
   brand?: string;
   unit: string; // 'pcs' | 'kg' | 'box' | 'pack' | 'bottle' | 'meter' etc.
@@ -63,6 +64,7 @@ export interface SaleItem {
   sku: string;
   barcode: string;
   name: string;
+  nameAmharic?: string; // Product name in Amharic (የዕቃው ስም በአማርኛ)
   category: string;
   imageUrl?: string;
   unitPrice: number;

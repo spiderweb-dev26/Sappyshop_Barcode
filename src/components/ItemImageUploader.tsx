@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Image as ImageIcon
 } from 'lucide-react';
-import { compressAndResizeImage, STATIONERY_PRESET_IMAGES, StationeryPresetImage } from '../utils/imageUtils';
+import { compressAndResizeImage, STATIONERY_PRESET_IMAGES, StationeryPresetImage, getStationeryFallbackSvg } from '../utils/imageUtils';
 
 interface ItemImageUploaderProps {
   value?: string;
@@ -128,6 +128,9 @@ export const ItemImageUploader: React.FC<ItemImageUploaderProps> = ({
               src={value} 
               alt={itemName} 
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(itemCategory, itemName);
+              }}
               className="w-full h-full object-contain p-1"
             />
           </div>

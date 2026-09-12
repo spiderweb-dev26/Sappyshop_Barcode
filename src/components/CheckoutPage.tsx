@@ -36,7 +36,7 @@ import autoTable from 'jspdf-autotable';
 import { SappyLogoMark } from './SappyLogo';
 import { formatCurrency } from '../utils/currencyUtils';
 import { soundEffects } from '../utils/soundEffects';
-import { getItemDisplayImage } from '../utils/imageUtils';
+import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
 
 const SAPPY_PAYMENT_METHODS: { 
   id: PaymentMethod; 
@@ -527,6 +527,9 @@ export const CheckoutPage: React.FC = () => {
                         src={getItemDisplayImage(item)}
                         alt={item.name}
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg(item.category, item.name);
+                        }}
                         className="w-full h-full object-contain p-1"
                       />
                     </div>
@@ -543,6 +546,11 @@ export const CheckoutPage: React.FC = () => {
                       <h3 className="font-bold text-sm text-slate-900 truncate mt-0.5">
                         {item.name}
                       </h3>
+                      {item.nameAmharic && (
+                        <p className="text-xs text-emerald-800 font-medium truncate mt-0.5" title={item.nameAmharic}>
+                          {item.nameAmharic}
+                        </p>
+                      )}
                       <p className="text-xs text-slate-500 font-mono mt-0.5">
                         {formatCurrency(unitPrice, settings.currencySymbol)} &times; {quantity} {item.unit}
                       </p>

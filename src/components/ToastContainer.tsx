@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getStationeryFallbackSvg } from '../utils/imageUtils';
 
 export const ToastContainer: React.FC = () => {
   const { toasts, removeToast } = useApp();
@@ -38,6 +39,9 @@ export const ToastContainer: React.FC = () => {
                     src={toast.imageUrl}
                     alt={toast.title}
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = getStationeryFallbackSvg('stationery', toast.title);
+                    }}
                     className="w-full h-full object-contain"
                   />
                 </div>

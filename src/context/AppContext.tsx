@@ -545,7 +545,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setItems([]);
         return;
       }
-      if (isMounted && isInitialSyncDone.current && cloudItems && cloudItems.length > 0) {
+      if (isMounted && isInitialSyncDone.current && cloudItems) {
         setItems(cloudItems);
       }
     });
@@ -556,7 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSales([]);
         return;
       }
-      if (isMounted && isInitialSyncDone.current && cloudSales && cloudSales.length > 0) {
+      if (isMounted && isInitialSyncDone.current && cloudSales) {
         setSales(cloudSales);
       }
     });

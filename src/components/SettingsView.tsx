@@ -433,9 +433,25 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <span className={`w-2 h-2 rounded-full ${cloudSyncStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse`} />
-              {cloudSyncStatus === 'synced' ? 'Online & Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : 'Connected'}
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+              cloudSyncStatus === 'synced'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : cloudSyncStatus === 'syncing'
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : cloudSyncStatus === 'error'
+                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                : 'bg-slate-100 text-slate-700 border-slate-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                cloudSyncStatus === 'error'
+                  ? 'bg-rose-500'
+                  : cloudSyncStatus === 'synced'
+                  ? 'bg-emerald-500'
+                  : cloudSyncStatus === 'syncing'
+                  ? 'bg-amber-500'
+                  : 'bg-slate-400'
+              } animate-pulse`} />
+              {cloudSyncStatus === 'synced' ? 'Online & Synced' : cloudSyncStatus === 'syncing' ? 'Syncing...' : cloudSyncStatus === 'error' ? 'Sync Error' : 'Local Only'}
             </span>
           </div>
         </div>

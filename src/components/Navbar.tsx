@@ -227,7 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => syncToCloudNow()}
               disabled={cloudSyncStatus === 'syncing'}
-              className="hidden lg:flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 border border-[#dfd7c7] px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition-colors"
+              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 border border-[#dfd7c7] px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 transition-colors"
               title={
                 cloudSyncStatus === 'synced'
                   ? 'Firestore Database: Cloud Synced. Click to manually sync now.'
@@ -243,7 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               ) : (
                 <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-700' : 'text-slate-500'}`} />
               )}
-              <span className="hidden xl:inline text-[11px] font-bold text-slate-800">
+              <span className="hidden sm:inline text-[11px] font-bold text-slate-800">
                 {cloudSyncStatus === 'synced'
                   ? 'Cloud Synced'
                   : cloudSyncStatus === 'syncing'

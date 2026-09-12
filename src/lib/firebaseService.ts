@@ -232,9 +232,7 @@ export function subscribeToLiveCloudItems(onUpdate: (items: InventoryItem[]) => 
   try {
     return onSnapshot(collection(db, COLLECTIONS.ITEMS), (snapshot) => {
       const items = snapshot.docs.map(d => d.data() as InventoryItem);
-      if (items.length > 0) {
-        onUpdate(items);
-      }
+      onUpdate(items);
     }, (err) => {
       console.warn('Firestore onSnapshot items error:', err);
     });
@@ -248,9 +246,7 @@ export function subscribeToLiveCloudSales(onUpdate: (sales: SaleRecord[]) => voi
   try {
     return onSnapshot(collection(db, COLLECTIONS.SALES), (snapshot) => {
       const sales = snapshot.docs.map(d => d.data() as SaleRecord);
-      if (sales.length > 0) {
-        onUpdate(sales);
-      }
+      onUpdate(sales);
     }, (err) => {
       console.warn('Firestore onSnapshot sales error:', err);
     });
@@ -264,9 +260,7 @@ export function subscribeToLiveCloudUsers(onUpdate: (users: User[]) => void): ()
   try {
     return onSnapshot(collection(db, COLLECTIONS.USERS), (snapshot) => {
       const users = snapshot.docs.map(d => d.data() as User);
-      if (users.length > 0) {
-        onUpdate(users);
-      }
+      onUpdate(users);
     }, (err) => {
       console.warn('Firestore onSnapshot users error:', err);
     });

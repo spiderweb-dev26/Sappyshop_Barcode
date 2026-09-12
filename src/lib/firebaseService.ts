@@ -193,8 +193,7 @@ export async function fetchCloudData(): Promise<{
       expensesResult,
       movResult,
       logsResult,
-      settingsResult,
-      stateResult
+      settingsResult
     ] = await Promise.allSettled([
       getDocs(collection(db, COLLECTIONS.ITEMS)),
       getDocs(collection(db, COLLECTIONS.SALES)),
@@ -202,8 +201,7 @@ export async function fetchCloudData(): Promise<{
       getDocs(collection(db, COLLECTIONS.EXPENSES)),
       getDocs(collection(db, COLLECTIONS.MOVEMENTS)),
       getDocs(query(collection(db, COLLECTIONS.LOGS), limit(200))),
-      getDoc(doc(db, COLLECTIONS.SETTINGS, 'store_config')),
-      getDoc(doc(db, COLLECTIONS.SETTINGS, 'system_state'))
+      getDoc(doc(db, COLLECTIONS.SETTINGS, 'store_config'))
     ]);
 
     const items = itemsResult.status === 'fulfilled' 
@@ -315,9 +313,6 @@ export async function wipeCloudCollection(collectionName: string): Promise<void>
 export async function wipeCloudDatabase(): Promise<void> {
   if (!db) return;
   try {
-    const wipeToken = `wipe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const nowIso = new Date().toISOString();
-
     await Promise.all([
       wipeCloudCollection(COLLECTIONS.ITEMS),
       wipeCloudCollection(COLLECTIONS.SALES),
@@ -327,66 +322,26 @@ export async function wipeCloudDatabase(): Promise<void> {
       wipeCloudCollection(COLLECTIONS.USERS)
     ]);
 
-    // Broadcast reset event with isReset: false so it never acts as a permanent persistent reset latch
-    const stateRef = doc(db, COLLECTIONS.SETTINGS, 'system_state');
-    await setDoc(stateRef, {
-      isReset: false,
-      action: 'PERMANENT_WIPE_ALL',
-      resetToken: wipeToken,
-      resetAt: nowIso
-    });
+    // Ensure any legacy toxic system_state document is permanently deleted
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.SETTINGS, 'system_state'));
+    } catch { /* ignore */ }
   } catch (error) {
     console.warn('Firestore: failed to wipe database', error);
   }
 }
 
-// Session timestamp to ignore any historical resets triggered before this client opened
-const clientMountTimestamp = Date.now();
-let lastProcessedResetToken: string | null = null;
-
 /**
- * Real-time listener for global cross-device wipe broadcasts.
- * When any terminal triggers a full reset, all connected devices instantly receive this notification.
- * Historical resets from before the current session are ignored.
+ * Disabled global cross-device wipe listener to prevent spurious recursive resets.
  */
-export function subscribeToGlobalSystemReset(onResetTriggered: (data: { resetAt: string; resetToken: string }) => void): () => void {
-  if (!db) return () => {};
-  try {
-    return onSnapshot(doc(db, COLLECTIONS.SETTINGS, 'system_state'), (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        if (
-          data &&
-          data.action === 'PERMANENT_WIPE_ALL' &&
-          data.resetToken &&
-          data.resetToken !== lastProcessedResetToken
-        ) {
-          const resetTime = data.resetAt ? Date.parse(data.resetAt) : 0;
-          // Must have been triggered strictly after this application instance loaded
-          if (resetTime >= clientMountTimestamp - 2000) {
-            lastProcessedResetToken = data.resetToken;
-            onResetTriggered({
-              resetAt: data.resetAt || new Date().toISOString(),
-              resetToken: data.resetToken
-            });
-          }
-        }
-      }
-    });
-  } catch (err) {
-    console.warn('Failed to subscribe to system_state:', err);
-    return () => {};
-  }
+export function subscribeToGlobalSystemReset(_onResetTriggered: (data: { resetAt: string; resetToken: string }) => void): () => void {
+  return () => {};
 }
 
 export async function clearCloudResetFlag(): Promise<void> {
   if (!db) return;
   try {
-    const stateRef = doc(db, COLLECTIONS.SETTINGS, 'system_state');
-    await setDoc(stateRef, {
-      isReset: false,
-      updatedAt: new Date().toISOString()
-    });
+    await deleteDoc(doc(db, COLLECTIONS.SETTINGS, 'system_state'));
   } catch (error) {
     console.warn('Firestore: failed to clear reset flag', error);
   }

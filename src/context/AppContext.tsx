@@ -45,7 +45,6 @@ import {
   subscribeToLiveCloudItems, 
   subscribeToLiveCloudSales, 
   subscribeToLiveCloudUsers,
-  subscribeToGlobalSystemReset,
   wipeCloudDatabase,
   wipeCloudCollection,
   clearCloudResetFlag,
@@ -418,6 +417,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     let isMounted = true;
 
+    // Purge any legacy poison reset flags from localStorage on startup
+    try {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_cross_device_reset`);
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
+    } catch { /* ignore */ }
+
     async function initFirestore() {
       if (!db) {
         if (isMounted) setCloudSyncStatus('offline');
@@ -501,43 +506,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
 
-    // Universal Cross-Device Real-time Wipe Listener
-    const unsubGlobalReset = subscribeToGlobalSystemReset((data) => {
-      console.warn('REAL-TIME GLOBAL SYSTEM WIPE RECEIVED FROM REMOTE TERMINAL:', data);
-      setIsSystemReset(true);
-      setItems([]);
-      setSales([]);
-      setExpenses([]);
-      setMovements([]);
-      setCart([]);
-      setLogs([]);
-      setUsers([]);
-      setCurrentUser(DEFAULT_EMPTY_USER);
-      setIsAuthenticated(false);
-      setWelcomeUser(null);
-      try {
-        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_full_reset`);
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_initialized`, 'true');
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_items`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_expenses`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_movements`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_cart`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_logs`, JSON.stringify([]));
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_is_authenticated`, 'false');
-        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_current_user_id`);
-        localStorage.removeItem('sappy_terminal_saved_email');
-      } catch { /* ignore */ }
-      addToast('error', 'Universal Reset Executed', 'An irreversible full wipe was executed across all devices and users.');
-    });
-
     return () => {
       isMounted = false;
       unsubItems();
       unsubSales();
       unsubUsers();
-      unsubGlobalReset();
     };
   }, []);
 
@@ -671,39 +644,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Error during local wipe execution:', err);
     }
   }, []);
-
-  // Multi-tab / Multi-window instant synchronization for universal wipe
-  useEffect(() => {
-    let bc: BroadcastChannel | null = null;
-    try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        bc = new BroadcastChannel('sappy_pos_global_sync');
-        bc.onmessage = (event) => {
-          if (event.data?.type === 'GLOBAL_SYSTEM_WIPE') {
-            console.warn('Cross-tab global system wipe event received!');
-            executeLocalWipe();
-            addToast('error', 'Universal Reset', 'A permanent full reset was executed across all devices. All data and users have been cleared.');
-          }
-        };
-      }
-    } catch (e) {
-      console.warn('BroadcastChannel initialization error:', e);
-    }
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === `${LOCAL_STORAGE_KEY}_cross_device_reset`) {
-        console.warn('Storage event triggered universal reset on tab!');
-        executeLocalWipe();
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-
-    return () => {
-      bc?.close();
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, [executeLocalWipe, addToast]);
 
   // Activity Logger
   const logActivity = useCallback((
@@ -1748,24 +1688,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('info', 'Sample Catalog Restored', 'Loaded sample stationery catalog.');
   }, [logActivity, addToast]);
 
-  // 1. FULL RESET: Irreversible Wipe Across ALL Devices and Users at Once
+  // 1. FULL RESET: Irreversible Wipe
   const fullResetSystem = useCallback(async () => {
-    // 1. Execute immediate local wipe across memory and local storage
     executeLocalWipe();
 
-    // 2. Broadcast immediately to all other open tabs and windows in current browser
-    try {
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cross_device_reset`, Date.now().toString());
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('sappy_pos_global_sync');
-        bc.postMessage({ type: 'GLOBAL_SYSTEM_WIPE', timestamp: Date.now() });
-        bc.close();
-      }
-    } catch (bcErr) {
-      console.warn('BroadcastChannel error:', bcErr);
-    }
-
-    // 3. Purge remote Firestore database (ALL collections including USERS) and broadcast to all remote devices
     if (db) {
       try {
         setCloudSyncStatus('syncing');
@@ -1778,8 +1704,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     addToast(
       'success',
-      'Irreversible Full Reset Executed',
-      'All inventory, sales records, expenses, and user accounts have been permanently wiped across all devices and terminals.'
+      'System Reset Complete',
+      'All inventory, sales records, expenses, and user accounts have been permanently wiped.'
     );
   }, [executeLocalWipe, addToast]);
 

@@ -227,19 +227,15 @@ export async function fetchCloudData(): Promise<{
     const settings = settingsResult.status === 'fulfilled' && settingsResult.value.exists()
       ? (settingsResult.value.data() as StoreSettings)
       : null;
-    const isCloudReset = stateResult.status === 'fulfilled' && stateResult.value.exists()
-      ? Boolean(stateResult.value.data()?.isReset)
-      : false;
-
     return {
-      items: isCloudReset ? [] : items,
-      sales: isCloudReset ? [] : sales,
+      items,
+      sales,
       users,
-      expenses: isCloudReset ? [] : expenses,
-      movements: isCloudReset ? [] : movements,
+      expenses,
+      movements,
       logs,
       settings,
-      isCloudReset
+      isCloudReset: false
     };
   } catch (error) {
     console.warn('Firestore: failed to fetch cloud data', error);
@@ -314,21 +310,13 @@ export async function wipeCloudCollection(collectionName: string): Promise<void>
 }
 
 /**
- * Permanently and irreversibly wipes all inventory items, sales records, expenses, movements, logs, and USERS from Firestore,
- * broadcasting an immediate global system wipe event across all connected devices and terminals.
+ * Permanently and irreversibly wipes all inventory items, sales records, expenses, movements, logs, and USERS from Firestore.
  */
 export async function wipeCloudDatabase(): Promise<void> {
   if (!db) return;
   try {
     const wipeToken = `wipe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    // Set system_state FIRST to trigger instant real-time broadcast across all listening devices
-    const stateRef = doc(db, COLLECTIONS.SETTINGS, 'system_state');
-    await setDoc(stateRef, {
-      isReset: true,
-      action: 'PERMANENT_WIPE_ALL',
-      resetToken: wipeToken,
-      resetAt: new Date().toISOString()
-    });
+    const nowIso = new Date().toISOString();
 
     await Promise.all([
       wipeCloudCollection(COLLECTIONS.ITEMS),
@@ -338,14 +326,28 @@ export async function wipeCloudDatabase(): Promise<void> {
       wipeCloudCollection(COLLECTIONS.LOGS),
       wipeCloudCollection(COLLECTIONS.USERS)
     ]);
+
+    // Broadcast reset event with isReset: false so it never acts as a permanent persistent reset latch
+    const stateRef = doc(db, COLLECTIONS.SETTINGS, 'system_state');
+    await setDoc(stateRef, {
+      isReset: false,
+      action: 'PERMANENT_WIPE_ALL',
+      resetToken: wipeToken,
+      resetAt: nowIso
+    });
   } catch (error) {
     console.warn('Firestore: failed to wipe database', error);
   }
 }
 
+// Session timestamp to ignore any historical resets triggered before this client opened
+const clientMountTimestamp = Date.now();
+let lastProcessedResetToken: string | null = null;
+
 /**
  * Real-time listener for global cross-device wipe broadcasts.
  * When any terminal triggers a full reset, all connected devices instantly receive this notification.
+ * Historical resets from before the current session are ignored.
  */
 export function subscribeToGlobalSystemReset(onResetTriggered: (data: { resetAt: string; resetToken: string }) => void): () => void {
   if (!db) return () => {};
@@ -353,11 +355,21 @@ export function subscribeToGlobalSystemReset(onResetTriggered: (data: { resetAt:
     return onSnapshot(doc(db, COLLECTIONS.SETTINGS, 'system_state'), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        if (data && data.isReset && data.action === 'PERMANENT_WIPE_ALL') {
-          onResetTriggered({
-            resetAt: data.resetAt || new Date().toISOString(),
-            resetToken: data.resetToken || 'reset'
-          });
+        if (
+          data &&
+          data.action === 'PERMANENT_WIPE_ALL' &&
+          data.resetToken &&
+          data.resetToken !== lastProcessedResetToken
+        ) {
+          const resetTime = data.resetAt ? Date.parse(data.resetAt) : 0;
+          // Must have been triggered strictly after this application instance loaded
+          if (resetTime >= clientMountTimestamp - 2000) {
+            lastProcessedResetToken = data.resetToken;
+            onResetTriggered({
+              resetAt: data.resetAt || new Date().toISOString(),
+              resetToken: data.resetToken
+            });
+          }
         }
       }
     });

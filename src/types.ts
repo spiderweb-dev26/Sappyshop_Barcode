@@ -48,8 +48,85 @@ export interface InventoryItem {
   expiryDate?: string;
   description?: string;
   imageUrl?: string; // Product photo (data URL or web URL)
+  wholesalePrice?: number; // Wholesale unit price for bulk purchases
+  wholesaleMinQty?: number; // Minimum quantity required for wholesale pricing (e.g., 5 or 10 pcs)
+  isFavoriteQuickKey?: boolean; // Starred fast-access item on POS register
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SplitPayment {
+  method: PaymentMethod;
+  amount: number;
+  reference?: string;
+}
+
+export interface ParkedOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  items: CartItem[];
+  discountAmount?: number;
+  createdAt: string;
+  cashierId: string;
+  cashierName: string;
+  notes?: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface RegisterShift {
+  id: string;
+  openedAt: string;
+  closedAt?: string;
+  openedById: string;
+  openedByName: string;
+  closedById?: string;
+  closedByName?: string;
+  openingFloat: number;
+  closingCashCounted?: number;
+  expectedCash?: number;
+  discrepancy?: number;
+  cashSalesTotal: number;
+  nonCashSalesTotal: number;
+  cashExpensesTotal: number;
+  status: 'OPEN' | 'CLOSED';
+  notes?: string;
+}
+
+export interface StocktakeItemSummary {
+  itemId: string;
+  sku: string;
+  name: string;
+  category: string;
+  expectedStock: number;
+  countedStock: number;
+  variance: number;
+  costPrice: number;
+}
+
+export interface StocktakeSession {
+  id: string;
+  sessionNumber: string;
+  startedAt: string;
+  completedAt: string;
+  conductedById: string;
+  conductedByName: string;
+  totalItemsCounted: number;
+  totalDiscrepancyQty: number;
+  totalDiscrepancyCost: number;
+  items: StocktakeItemSummary[];
+  notes?: string;
 }
 
 export interface CartItem {
@@ -131,6 +208,7 @@ export interface SaleRecord {
   paymentStatus?: 'PAID' | 'UNPAID_CREDIT' | 'PARTIALLY_PAID';
   creditSettledAt?: string;
   creditSettledMethod?: PaymentMethod;
+  splitPayments?: SplitPayment[]; // Detailed breakdown when multiple tenders are used
   createdAt: string;
   notes?: string;
 }
@@ -200,6 +278,8 @@ export type ActionType =
   | 'BULK_IMPORT' 
   | 'DATA_EXPORT' 
   | 'USER_CREATED' 
+  | 'USER_UPDATED'
+  | 'PROFILE_PICTURE_UPDATED'
   | 'ROLE_CHANGED' 
   | 'USER_LOGIN' 
   | 'SETTINGS_UPDATED'
@@ -207,7 +287,14 @@ export type ActionType =
   | 'FULL_RESET'
   | 'YEAR_END_RESET'
   | 'CREDIT_SETTLED'
-  | 'MASTER_AUTH_SUCCESS';
+  | 'MASTER_AUTH_SUCCESS'
+  | 'ORDER_PARKED'
+  | 'ORDER_RECALLED'
+  | 'STOCKTAKE_COMPLETED'
+  | 'REGISTER_OPENED'
+  | 'REGISTER_CLOSED'
+  | 'SUPPLIER_CREATED'
+  | 'PURCHASE_ORDER_GENERATED';
 
 export interface ActivityLog {
   id: string;
@@ -215,6 +302,8 @@ export interface ActivityLog {
   userId: string;
   userName: string;
   userRole: UserRole;
+  userAvatar?: string;
+  userAvatarColor?: string;
   actionType: ActionType;
   entityType: 'ITEM' | 'SALE' | 'EXPENSE' | 'USER' | 'SYSTEM' | 'REPORT';
   entityId?: string;

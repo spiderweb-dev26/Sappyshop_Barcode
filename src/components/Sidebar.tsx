@@ -37,7 +37,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     sales,
     users,
     currentUser, 
-    logoutUser
+    logoutUser,
+    activeShift,
+    parkedOrders
   } = useApp();
 
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -75,8 +77,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'pos',
       label: 'POS Register',
       icon: ShoppingCart,
-      badge: cartItemCount > 0 ? `${cartItemCount}` : undefined,
-      badgeColor: 'bg-rose-500 text-white',
+      badge: (parkedOrders && parkedOrders.length > 0)
+        ? `${parkedOrders.length} Held`
+        : (cartItemCount > 0 ? `${cartItemCount}` : undefined),
+      badgeColor: (parkedOrders && parkedOrders.length > 0) ? 'bg-amber-400 text-amber-950 font-bold' : 'bg-rose-500 text-white',
       allowedRoles: ['ADMIN', 'MANAGER', 'CASHIER'],
     },
     {
@@ -225,6 +229,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom User Card & Logout in Sidebar */}
       <div className="mt-4 pt-3 border-t border-emerald-800/80 space-y-2">
+        {/* Register Shift Status Indicator */}
+        {activeShift ? (
+          <div 
+            onClick={() => {
+              setActiveTab('pos');
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 flex items-center justify-between text-[11px] cursor-pointer hover:bg-emerald-950 transition-colors"
+            title="Active Register Shift - Click to view in POS"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-200 font-medium">Shift #{activeShift.shiftNumber} Active</span>
+            </div>
+            <span className="text-[10px] text-emerald-400 font-mono font-bold">OPEN</span>
+          </div>
+        ) : (
+          <div 
+            onClick={() => {
+              setActiveTab('pos');
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-900/50 border border-slate-700/50 flex items-center justify-between text-[11px] cursor-pointer hover:bg-slate-900 transition-colors"
+            title="Register is currently closed - Click to open shift in POS"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-slate-300 font-medium">Register Closed</span>
+            </div>
+            <span className="text-[10px] text-amber-300 font-bold hover:underline">Open Shift</span>
+          </div>
+        )}
+
         <PWAInstallButton variant="banner" />
         <div className="p-2 rounded-2xl bg-[#043b2c] border border-emerald-800/60 flex items-center justify-between gap-2">
           <button
@@ -235,8 +272,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2.5 min-w-0 flex-1 text-left group hover:opacity-90 transition-opacity"
             title="Switch User Profile"
           >
-            <div className="w-8 h-8 rounded-full bg-emerald-700 border border-emerald-500/50 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs">
-              {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : 'ST'}
+            <div className={`w-8 h-8 rounded-full ${currentUser?.avatarColor || 'bg-emerald-700'} border border-emerald-500/50 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs overflow-hidden`}>
+              {currentUser?.avatar ? (
+                <img 
+                  src={currentUser.avatar} 
+                  alt={currentUser.name} 
+                  className="w-full h-full object-cover" 
+                  referrerPolicy="no-referrer" 
+                />
+              ) : (
+                <span>{currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : 'ST'}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-emerald-50 truncate leading-tight group-hover:text-emerald-200 transition-colors">

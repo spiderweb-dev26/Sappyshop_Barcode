@@ -334,8 +334,12 @@ export const UserPinModal: React.FC<UserPinModalProps> = ({ isOpen = true, onClo
                             : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
-                        <div className={`w-8 h-8 rounded-full ${u.avatarColor} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs`}>
-                          {u.name.slice(0, 2).toUpperCase()}
+                        <div className={`w-8 h-8 rounded-full ${u.avatarColor || 'bg-emerald-700'} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs overflow-hidden`}>
+                          {u.avatar ? (
+                            <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span>{u.name.slice(0, 2).toUpperCase()}</span>
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">

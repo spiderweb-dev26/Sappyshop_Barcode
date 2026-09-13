@@ -14,7 +14,13 @@ import {
   ActionType,
   ExpenseCategory,
   MasterAuthRequest,
-  MASTER_PASSCODE
+  MASTER_PASSCODE,
+  SplitPayment,
+  ParkedOrder,
+  Supplier,
+  RegisterShift,
+  StocktakeItemSummary,
+  StocktakeSession
 } from '../types';
 import { 
   INITIAL_ITEMS, 
@@ -25,6 +31,7 @@ import {
   INITIAL_LOGS, 
   INITIAL_SETTINGS 
 } from '../data/mockData';
+import { INITIAL_SUPPLIERS } from '../data/suppliersData';
 import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { 
@@ -132,6 +139,8 @@ interface AppContextType {
   updateUserRole: (userId: string, newRole: UserRole) => void;
   toggleUserStatus: (userId: string) => void;
   updateUserPin: (userId: string, newPin: string) => void;
+  updateUserProfile: (userId: string, updates: Partial<Pick<User, 'name' | 'email' | 'avatar' | 'avatarColor' | 'role' | 'pin'>>) => boolean;
+  updateUserAvatar: (userId: string, avatarUrl?: string) => boolean;
   deleteUser: (userId: string) => boolean;
 
   // Inventory Actions
@@ -152,9 +161,35 @@ interface AppContextType {
     customerName?: string,
     customerPhone?: string,
     notes?: string,
-    discountAmount?: number
+    discountAmount?: number,
+    splitPayments?: SplitPayment[]
   ) => SaleRecord | null;
   refundSale: (saleId: string, reason: string) => boolean;
+
+  // Parked Orders / Hold Tickets
+  parkedOrders: ParkedOrder[];
+  parkOrder: (customerName?: string, customerPhone?: string, notes?: string) => boolean;
+  recallOrder: (orderId: string) => boolean;
+  discardParkedOrder: (orderId: string) => boolean;
+
+  // Suppliers & Purchasing
+  suppliers: Supplier[];
+  addSupplier: (data: Omit<Supplier, 'id' | 'createdAt'>) => Supplier;
+  updateSupplier: (id: string, updates: Partial<Supplier>) => boolean;
+  deleteSupplier: (id: string) => boolean;
+
+  // Register Shifts & EOD Reconciliation
+  activeShift: RegisterShift | null;
+  shiftsHistory: RegisterShift[];
+  openRegisterShift: (openingFloat: number, notes?: string) => RegisterShift;
+  closeRegisterShift: (closingCashCounted: number, notes?: string) => RegisterShift | null;
+
+  // Stocktaking
+  stocktakeSessions: StocktakeSession[];
+  commitStocktake: (summaries: StocktakeItemSummary[], notes?: string) => StocktakeSession;
+
+  // Quick Keys
+  toggleQuickKeyFavorite: (itemId: string) => void;
 
   // Expense Actions
   addExpense: (expenseData: {
@@ -380,6 +415,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  // Parked Orders State
+  const [parkedOrders, setParkedOrders] = useState<ParkedOrder[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_parked_orders`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Suppliers Directory State
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_suppliers`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_SUPPLIERS;
+    } catch {
+      return INITIAL_SUPPLIERS;
+    }
+  });
+
+  // Register Shift & Reconciliation State
+  const [activeShift, setActiveShift] = useState<RegisterShift | null>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_active_shift`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [shiftsHistory, setShiftsHistory] = useState<RegisterShift[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_shifts_history`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Stocktake Audits State
+  const [stocktakeSessions, setStocktakeSessions] = useState<StocktakeSession[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_stocktakes`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Save new states to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_parked_orders`, JSON.stringify(parkedOrders));
+    } catch { /* ignore */ }
+  }, [parkedOrders]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_suppliers`, JSON.stringify(suppliers));
+    } catch { /* ignore */ }
+  }, [suppliers]);
+
+  useEffect(() => {
+    try {
+      if (activeShift) {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_active_shift`, JSON.stringify(activeShift));
+      } else {
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_active_shift`);
+      }
+    } catch { /* ignore */ }
+  }, [activeShift]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_shifts_history`, JSON.stringify(shiftsHistory));
+    } catch { /* ignore */ }
+  }, [shiftsHistory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_stocktakes`, JSON.stringify(stocktakeSessions));
+    } catch { /* ignore */ }
+  }, [stocktakeSessions]);
 
   // Toast Helper
   const addToast = useCallback((type: ToastNotification['type'], title: string, message?: string, imageUrl?: string) => {
@@ -665,6 +804,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userId: currentUser.id,
       userName: currentUser.name,
       userRole: currentUser.role,
+      userAvatar: currentUser.avatar,
+      userAvatarColor: currentUser.avatarColor,
       actionType,
       entityType,
       entityId,
@@ -1072,6 +1213,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('success', 'PIN Encrypted & Updated', 'User access PIN has been encrypted and reset successfully.');
   }, [addToast]);
 
+  const updateUserProfile = useCallback((
+    userId: string, 
+    updates: Partial<Pick<User, 'name' | 'email' | 'avatar' | 'avatarColor' | 'role' | 'pin'>>
+  ): boolean => {
+    let updatedUser: User | null = null;
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const nextPin = updates.pin 
+          ? (isHashed(updates.pin) ? updates.pin : hashCredential(updates.pin))
+          : u.pin;
+        updatedUser = {
+          ...u,
+          ...updates,
+          pin: nextPin,
+        };
+        return updatedUser;
+      }
+      return u;
+    }));
+
+    if (!updatedUser) {
+      addToast('error', 'User Not Found', 'Could not locate the specified user profile.');
+      return false;
+    }
+
+    if (currentUser.id === userId) {
+      setCurrentUser(prev => ({
+        ...prev,
+        ...updates,
+        pin: updatedUser!.pin,
+      }));
+    }
+
+    syncUserToCloud(updatedUser);
+
+    const isAvatarChange = updates.avatar !== undefined;
+    logActivity(
+      isAvatarChange ? 'PROFILE_PICTURE_UPDATED' : 'USER_UPDATED',
+      'USER',
+      userId,
+      isAvatarChange 
+        ? `Updated profile picture for ${updatedUser.name} (${updatedUser.role})`
+        : `Updated profile details for ${updatedUser.name}`
+    );
+
+    addToast('success', 'Profile Updated', `Account details for ${updatedUser.name} saved successfully.`);
+    return true;
+  }, [currentUser.id, logActivity, addToast]);
+
+  const updateUserAvatar = useCallback((userId: string, avatarUrl?: string): boolean => {
+    return updateUserProfile(userId, { avatar: avatarUrl });
+  }, [updateUserProfile]);
+
   const deleteUser = useCallback((userId: string): boolean => {
     if (userId === currentUser.id) {
       addToast('error', 'Action Forbidden', 'You cannot delete your own active user account.');
@@ -1406,9 +1600,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           addToast('warning', 'Stock Limit Reached', `Only ${item.stock} units available in stock.`);
           return prev;
         }
-        return prev.map(c => c.item.id === item.id ? { ...c, quantity: nextQty } : c);
+        const effectivePrice = (item.wholesalePrice && item.wholesaleMinQty && nextQty >= item.wholesaleMinQty)
+          ? item.wholesalePrice
+          : item.sellingPrice;
+        return prev.map(c => c.item.id === item.id ? { ...c, quantity: nextQty, unitPrice: effectivePrice } : c);
       } else {
-        return [...prev, { item, quantity, unitPrice: item.sellingPrice, discount: 0 }];
+        const effectivePrice = (item.wholesalePrice && item.wholesaleMinQty && quantity >= item.wholesaleMinQty)
+          ? item.wholesalePrice
+          : item.sellingPrice;
+        return [...prev, { item, quantity, unitPrice: effectivePrice, discount: 0 }];
       }
     });
 
@@ -1424,7 +1624,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (c.item.id === itemId) {
           const maxAvailable = c.item.stock;
           const finalQty = Math.min(quantity, maxAvailable);
-          return { ...c, quantity: finalQty };
+          const effectivePrice = (c.item.wholesalePrice && c.item.wholesaleMinQty && finalQty >= c.item.wholesaleMinQty)
+            ? c.item.wholesalePrice
+            : c.item.sellingPrice;
+          return { ...c, quantity: finalQty, unitPrice: effectivePrice };
         }
         return c;
       });
@@ -1445,7 +1648,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     customerName?: string,
     customerPhone?: string,
     notes?: string,
-    discountAmount = 0
+    discountAmount = 0,
+    splitPayments?: SplitPayment[]
   ): SaleRecord | null => {
     if (cart.length === 0) {
       addToast('warning', 'Cart Empty', 'Please add items before checkout.');
@@ -1458,13 +1662,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const totalCost = cart.reduce((acc, c) => acc + (c.item.costPrice * c.quantity), 0);
     const netProfit = grandTotal - totalCost;
 
-    if (paymentMethod === 'CASH' && amountPaid < grandTotal) {
+    if (paymentMethod === 'CASH' && !splitPayments && amountPaid < grandTotal) {
       if (settings.enableSoundEffects) soundEffects.playError();
       addToast('error', 'Insufficient Cash', `Amount paid (${formatCurrency(amountPaid, settings.currencySymbol)}) is less than total (${formatCurrency(grandTotal, settings.currencySymbol)}).`);
       return null;
     }
 
-    const changeDue = paymentMethod === 'CASH' ? Math.max(0, amountPaid - grandTotal) : 0;
+    const changeDue = (paymentMethod === 'CASH' && !splitPayments) ? Math.max(0, amountPaid - grandTotal) : 0;
     const invoiceNo = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const isCredit = paymentMethod === 'CREDIT';
 
@@ -1493,7 +1697,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalCost,
       netProfit,
       paymentMethod,
-      amountPaid: isCredit ? 0 : (paymentMethod === 'CASH' ? amountPaid : grandTotal),
+      amountPaid: isCredit ? 0 : (splitPayments ? grandTotal : (paymentMethod === 'CASH' ? amountPaid : grandTotal)),
       changeDue,
       customerName: customerName || (isCredit ? 'Credit Account Customer' : 'Walk-in Customer'),
       customerPhone,
@@ -1502,7 +1706,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'COMPLETED',
       paymentStatus: isCredit ? 'UNPAID_CREDIT' : 'PAID',
       createdAt: new Date().toISOString(),
-      notes
+      notes,
+      splitPayments
     };
 
     // Deduct stock and record movements
@@ -1537,6 +1742,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSales(prev => [saleRecord, ...prev]);
     setCart([]);
 
+    // Update active shift drawer ledger if a register shift is open
+    if (activeShift) {
+      let cashDelta = 0;
+      let nonCashDelta = 0;
+
+      if (splitPayments && splitPayments.length > 0) {
+        splitPayments.forEach(sp => {
+          if (sp.method === 'CASH') cashDelta += Number(sp.amount) || 0;
+          else if (sp.method !== 'CREDIT') nonCashDelta += Number(sp.amount) || 0;
+        });
+      } else if (paymentMethod === 'CASH') {
+        cashDelta += grandTotal;
+      } else if (paymentMethod !== 'CREDIT') {
+        nonCashDelta += grandTotal;
+      }
+
+      setActiveShift(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          cashSalesTotal: prev.cashSalesTotal + cashDelta,
+          nonCashSalesTotal: prev.nonCashSalesTotal + nonCashDelta
+        };
+      });
+    }
+
     // Sync sale, movements, and affected items to Firestore
     syncSaleToCloud(saleRecord);
     newMovements.forEach(m => syncMovementToCloud(m));
@@ -1546,7 +1777,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('success', 'Sale Completed!', `Invoice ${invoiceNo} recorded successfully.`);
 
     return saleRecord;
-  }, [cart, settings, currentUser, logActivity, addToast]);
+  }, [cart, settings, currentUser, activeShift, logActivity, addToast]);
 
   const refundSale = useCallback((saleId: string, reason: string): boolean => {
     const sale = sales.find(s => s.id === saleId);
@@ -1599,6 +1830,220 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('warning', 'Sale Refunded', `Invoice ${sale.invoiceNo} items returned to inventory.`);
     return true;
   }, [sales, settings.currencySymbol, currentUser, logActivity, addToast]);
+
+  // Parked Orders / Hold Tickets
+  const parkOrder = useCallback((customerName?: string, customerPhone?: string, notes?: string): boolean => {
+    if (cart.length === 0) {
+      addToast('warning', 'Empty Cart', 'Cannot hold an empty cart.');
+      return false;
+    }
+
+    const orderNum = `HOLD-${parkedOrders.length + 1}`;
+    const newParked: ParkedOrder = {
+      id: `parked-${Date.now()}`,
+      orderNumber: orderNum,
+      items: [...cart],
+      customerName: customerName || `Customer #${parkedOrders.length + 1}`,
+      customerPhone,
+      notes,
+      cashierId: currentUser.id,
+      cashierName: currentUser.name,
+      createdAt: new Date().toISOString()
+    };
+
+    setParkedOrders(prev => [newParked, ...prev]);
+    setCart([]);
+    logActivity('ORDER_PARKED', 'SALE', orderNum, `Parked ticket ${orderNum} (${cart.length} items) for ${newParked.customerName}`);
+    addToast('info', 'Cart Held', `Ticket ${orderNum} placed on hold.`);
+    return true;
+  }, [cart, parkedOrders.length, currentUser, logActivity, addToast]);
+
+  const recallOrder = useCallback((orderId: string): boolean => {
+    const order = parkedOrders.find(o => o.id === orderId);
+    if (!order) return false;
+
+    setCart(order.items);
+    setParkedOrders(prev => prev.filter(o => o.id !== orderId));
+    logActivity('ORDER_RECALLED', 'SALE', order.orderNumber, `Recalled held order ${order.orderNumber} to register.`);
+    addToast('success', 'Order Recalled', `Loaded ${order.orderNumber} into active cart.`);
+    return true;
+  }, [parkedOrders, logActivity, addToast]);
+
+  const discardParkedOrder = useCallback((orderId: string): boolean => {
+    const order = parkedOrders.find(o => o.id === orderId);
+    if (!order) return false;
+
+    setParkedOrders(prev => prev.filter(o => o.id !== orderId));
+    logActivity('ORDER_DISCARDED', 'SALE', order.orderNumber, `Discarded held order ${order.orderNumber}`);
+    addToast('info', 'Ticket Discarded', `Hold ticket ${order.orderNumber} removed.`);
+    return true;
+  }, [parkedOrders, logActivity, addToast]);
+
+  // Suppliers Management
+  const addSupplier = useCallback((data: Omit<Supplier, 'id' | 'createdAt'>): Supplier => {
+    const newSup: Supplier = {
+      ...data,
+      id: `sup-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    setSuppliers(prev => [newSup, ...prev]);
+    logActivity('SUPPLIER_CREATED', 'STORE', newSup.name, `Registered supplier ${newSup.name}`);
+    return newSup;
+  }, [logActivity]);
+
+  const updateSupplier = useCallback((id: string, updates: Partial<Supplier>): boolean => {
+    setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    return true;
+  }, []);
+
+  const deleteSupplier = useCallback((id: string): boolean => {
+    setSuppliers(prev => prev.filter(s => s.id !== id));
+    return true;
+  }, []);
+
+  // Register Shifts & Cash Drawer Reconciliation
+  const openRegisterShift = useCallback((openingFloat: number, notes?: string): RegisterShift => {
+    const newShift: RegisterShift = {
+      id: `shift-${Date.now()}`,
+      openedAt: new Date().toISOString(),
+      openedById: currentUser.id,
+      openedByName: currentUser.name,
+      openingFloat,
+      cashSalesTotal: 0,
+      nonCashSalesTotal: 0,
+      cashExpensesTotal: 0,
+      status: 'OPEN',
+      notes
+    };
+    setActiveShift(newShift);
+    logActivity('REGISTER_OPENED', 'REGISTER', newShift.id, `Opened register shift with float of ${formatCurrency(openingFloat, settings.currencySymbol)}`);
+    addToast('success', 'Register Opened', `Opening float set to ${formatCurrency(openingFloat, settings.currencySymbol)}.`);
+    return newShift;
+  }, [currentUser, settings.currencySymbol, logActivity, addToast]);
+
+  const closeRegisterShift = useCallback((closingCashCounted: number, notes?: string): RegisterShift | null => {
+    if (!activeShift) {
+      addToast('warning', 'No Active Shift', 'No shift is currently open to close.');
+      return null;
+    }
+
+    const shiftStart = new Date(activeShift.openedAt).getTime();
+    const shiftSales = sales.filter(s => new Date(s.createdAt).getTime() >= shiftStart && s.status === 'COMPLETED');
+
+    let cashSalesTotal = 0;
+    let nonCashSalesTotal = 0;
+    shiftSales.forEach(s => {
+      if (s.splitPayments && s.splitPayments.length > 0) {
+        s.splitPayments.forEach(sp => {
+          if (sp.method === 'CASH') cashSalesTotal += Number(sp.amount) || 0;
+          else if (sp.method !== 'CREDIT') nonCashSalesTotal += Number(sp.amount) || 0;
+        });
+      } else if (s.paymentMethod === 'CASH') {
+        cashSalesTotal += s.grandTotal;
+      } else if (s.paymentMethod !== 'CREDIT') {
+        nonCashSalesTotal += s.grandTotal;
+      }
+    });
+
+    const shiftExpenses = expenses.filter(e => new Date(e.createdAt).getTime() >= shiftStart && e.paymentMethod === 'CASH');
+    const cashExpensesTotal = shiftExpenses.reduce((acc, e) => acc + e.amount, 0);
+
+    const expectedCash = activeShift.openingFloat + cashSalesTotal - cashExpensesTotal;
+    const discrepancy = closingCashCounted - expectedCash;
+
+    const closedShift: RegisterShift = {
+      ...activeShift,
+      closedAt: new Date().toISOString(),
+      closedById: currentUser.id,
+      closedByName: currentUser.name,
+      cashSalesTotal,
+      nonCashSalesTotal,
+      cashExpensesTotal,
+      expectedCash,
+      closingCashCounted,
+      discrepancy,
+      status: 'CLOSED',
+      notes: notes ? `${activeShift.notes ? activeShift.notes + ' | ' : ''}${notes}` : activeShift.notes
+    };
+
+    setShiftsHistory(prev => [closedShift, ...prev]);
+    setActiveShift(null);
+    logActivity('REGISTER_CLOSED', 'REGISTER', closedShift.id, `Closed register shift. Expected: ${formatCurrency(expectedCash, settings.currencySymbol)}, Counted: ${formatCurrency(closingCashCounted, settings.currencySymbol)}, Discrepancy: ${discrepancy >= 0 ? '+' : ''}${formatCurrency(discrepancy, settings.currencySymbol)}`);
+    addToast('success', 'Shift Closed & Reconciled', `Z-Report generated for shift #${closedShift.id.slice(-6)}.`);
+    return closedShift;
+  }, [activeShift, sales, expenses, currentUser, settings.currencySymbol, logActivity, addToast]);
+
+  // Stocktaking
+  const commitStocktake = useCallback((summaries: StocktakeItemSummary[], notes?: string): StocktakeSession => {
+    const itemsWithVariance = summaries.filter(s => s.variance !== 0);
+    const auditMovements: StockMovement[] = [];
+
+    setItems(prevItems => {
+      return prevItems.map(item => {
+        const summary = itemsWithVariance.find(s => s.itemId === item.id);
+        if (summary) {
+          const updatedItem = {
+            ...item,
+            stock: summary.countedStock,
+            updatedAt: new Date().toISOString()
+          };
+          syncItemToCloud(updatedItem);
+
+          auditMovements.push({
+            id: `mov-audit-${Date.now()}-${item.id}`,
+            itemId: item.id,
+            itemName: item.name,
+            sku: item.sku,
+            type: 'ADJUSTMENT',
+            quantityChange: summary.variance,
+            previousStock: summary.expectedStock,
+            newStock: summary.countedStock,
+            referenceId: `STOCKTAKE-${Date.now()}`,
+            reason: `Physical count stocktake audit: ${summary.variance >= 0 ? '+' : ''}${summary.variance} units`,
+            performedById: currentUser.id,
+            performedByName: currentUser.name,
+            timestamp: new Date().toISOString()
+          });
+
+          return updatedItem;
+        }
+        return item;
+      });
+    });
+
+    setMovements(prev => [...auditMovements, ...prev]);
+    auditMovements.forEach(m => syncMovementToCloud(m));
+
+    const session: StocktakeSession = {
+      id: `stocktake-${Date.now()}`,
+      sessionNumber: `STK-${Date.now().toString().slice(-6)}`,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      conductedById: currentUser.id,
+      conductedByName: currentUser.name,
+      items: summaries,
+      totalItemsCounted: summaries.length,
+      totalDiscrepancyQty: itemsWithVariance.reduce((acc, s) => acc + Math.abs(s.variance), 0),
+      totalDiscrepancyCost: itemsWithVariance.reduce((acc, s) => acc + (s.variance * s.costPrice), 0),
+      notes
+    };
+
+    setStocktakeSessions(prev => [session, ...prev]);
+    logActivity('STOCKTAKE_COMPLETED', 'ITEM', session.id, `Completed stocktake audit across ${summaries.length} items with ${itemsWithVariance.length} adjustments.`);
+    return session;
+  }, [currentUser, logActivity]);
+
+  // Quick Keys Favorite Toggle
+  const toggleQuickKeyFavorite = useCallback((itemId: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const updated = { ...item, isFavoriteQuickKey: !item.isFavoriteQuickKey, updatedAt: new Date().toISOString() };
+        syncItemToCloud(updated);
+        return updated;
+      }
+      return item;
+    }));
+  }, []);
 
   // Expenses
   const addExpense = useCallback((expenseData: {
@@ -2024,6 +2469,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserRole,
         toggleUserStatus,
         updateUserPin,
+        updateUserProfile,
+        updateUserAvatar,
         deleteUser,
         addItem,
         updateItem,
@@ -2036,6 +2483,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearCart,
         checkoutSale,
         refundSale,
+        parkedOrders,
+        parkOrder,
+        recallOrder,
+        discardParkedOrder,
+        suppliers,
+        addSupplier,
+        updateSupplier,
+        deleteSupplier,
+        activeShift,
+        shiftsHistory,
+        openRegisterShift,
+        closeRegisterShift,
+        stocktakeSessions,
+        commitStocktake,
+        toggleQuickKeyFavorite,
         addExpense,
         deleteExpense,
         handleBarcodeScanned,

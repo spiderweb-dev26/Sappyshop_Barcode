@@ -25,7 +25,11 @@ import {
   Check,
   ArrowRight,
   Image as ImageIcon,
-  Package
+  Package,
+  PauseCircle,
+  Split,
+  Calculator,
+  Percent
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -33,6 +37,10 @@ import autoTable from 'jspdf-autotable';
 import { SappyLogoMark } from './SappyLogo';
 import { formatCurrency } from '../utils/currencyUtils';
 import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
+import { QuickKeysBar } from './QuickKeysBar';
+import { ParkedOrdersDrawer } from './ParkedOrdersDrawer';
+import { SplitPaymentModal } from './SplitPaymentModal';
+import { RegisterReconciliationModal } from './RegisterReconciliationModal';
 
 const SAPPY_PAYMENT_METHODS: { id: PaymentMethod; label: string; subLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'CASH', label: 'Cash', subLabel: 'Direct Cash', icon: Banknote },
@@ -58,7 +66,11 @@ export const POSRegister: React.FC = () => {
     handleBarcodeScanned,
     setActiveTab,
     lastScannedItem,
-    clearLastScannedItem
+    clearLastScannedItem,
+    parkedOrders,
+    parkOrder,
+    activeShift,
+    sales
   } = useApp();
 
   const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
@@ -66,6 +78,11 @@ export const POSRegister: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState('ALL');
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   
+  // Modals for Enhanced POS Features
+  const [isParkedDrawerOpen, setIsParkedDrawerOpen] = useState(false);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+
   // Checkout Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
@@ -232,10 +249,43 @@ export const POSRegister: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
+          {/* Register Shift & Float Button */}
+          <button
+            onClick={() => setIsShiftModalOpen(true)}
+            className={`h-8 px-3 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
+              activeShift
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+            }`}
+            title="Register shift float tracking and End-of-Day cash reconciliation"
+          >
+            <Calculator className={`w-3.5 h-3.5 ${activeShift ? 'text-emerald-700' : 'text-slate-500'}`} />
+            <span>
+              {activeShift ? `Shift Active (${formatCurrency(activeShift.openingFloat, settings.currencySymbol)})` : 'Open Register Shift'}
+            </span>
+            {activeShift && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+          </button>
+
+          {/* Parked / Held Tickets Button */}
+          <button
+            onClick={() => setIsParkedDrawerOpen(true)}
+            className="h-8 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="View or recall parked customer tickets"
+          >
+            <PauseCircle className="w-3.5 h-3.5 text-amber-700" />
+            <span>Hold Tickets</span>
+            {parkedOrders.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-amber-600 text-white rounded-full text-[10px] font-black font-mono">
+                {parkedOrders.length}
+              </span>
+            )}
+          </button>
+
+          {/* Camera Scanner Button */}
           <button
             onClick={() => setIsScannerModalOpen(true)}
-            className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
+            className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <Scan className="w-3.5 h-3.5 text-emerald-200" />
             <span>Open Camera Scanner</span>
@@ -351,6 +401,9 @@ export const POSRegister: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column: Product Selection Grid (7 cols) */}
         <div className={`lg:col-span-7 space-y-3 flex-col ${mobileTab === 'catalog' ? 'flex' : 'hidden lg:flex'}`}>
+          {/* Quick Keys Bar */}
+          <QuickKeysBar />
+
           {/* Search bar */}
           <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
             <form onSubmit={handleBarcodeSearchSubmit} className="relative">
@@ -449,23 +502,33 @@ export const POSRegister: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-end justify-between">
-                    <div>
-                      <p className="text-sm font-bold text-emerald-800 font-mono">
-                        {formatCurrency(item.sellingPrice, settings.currencySymbol)}
-                      </p>
-                      <span className="text-[10px] text-slate-400">/{item.unit}</span>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1">
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-emerald-800 font-mono">
+                          {formatCurrency(item.sellingPrice, settings.currencySymbol)}
+                        </p>
+                        <span className="text-[10px] text-slate-400">/{item.unit}</span>
+                      </div>
+
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                        isOut
+                          ? 'bg-rose-100 text-rose-800'
+                          : isLow
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {item.stock} left
+                      </span>
                     </div>
 
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                      isOut
-                        ? 'bg-rose-100 text-rose-800'
-                        : isLow
-                        ? 'bg-orange-100 text-orange-800'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}>
-                      {item.stock} left
-                    </span>
+                    {/* Wholesale pricing indicator if present */}
+                    {item.wholesalePrice && item.wholesaleMinQty && (
+                      <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded">
+                        <Tag className="w-2.5 h-2.5" />
+                        <span>Bulk: {formatCurrency(item.wholesalePrice, settings.currencySymbol)} ({item.wholesaleMinQty}+)</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -486,15 +549,29 @@ export const POSRegister: React.FC = () => {
                 </p>
               </div>
             </div>
-            {cart.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-[11px] font-semibold text-rose-200 hover:text-rose-100 bg-rose-950/60 hover:bg-rose-950 px-2 py-1 rounded transition-colors flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Clear</span>
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {cart.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => parkOrder()}
+                  className="text-[11px] font-semibold text-amber-200 hover:text-amber-100 bg-amber-900/60 hover:bg-amber-900 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Hold/Park this cart to serve another customer"
+                >
+                  <PauseCircle className="w-3 h-3 text-amber-300" />
+                  <span>Hold Cart</span>
+                </button>
+              )}
+              {cart.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="text-[11px] font-semibold text-rose-200 hover:text-rose-100 bg-rose-950/60 hover:bg-rose-950 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Cart Items List */}
@@ -615,6 +692,17 @@ export const POSRegister: React.FC = () => {
               <CreditCard className="w-4 h-4 text-emerald-300" />
               <span>Proceed to Full-Page Checkout ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
               <ArrowRight className="w-4 h-4 text-emerald-300" />
+            </button>
+
+            {/* Split Tender Modal Button */}
+            <button
+              type="button"
+              disabled={cart.length === 0}
+              onClick={() => setIsSplitModalOpen(true)}
+              className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+            >
+              <Split className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Split Tender (Multi-Payment Methods)</span>
             </button>
           </div>
         </div>
@@ -922,6 +1010,31 @@ export const POSRegister: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Parked Orders / Hold Tickets Drawer */}
+      <ParkedOrdersDrawer
+        isOpen={isParkedDrawerOpen}
+        onClose={() => setIsParkedDrawerOpen(false)}
+      />
+
+      {/* Split Payment Modal */}
+      <SplitPaymentModal
+        isOpen={isSplitModalOpen}
+        onClose={() => setIsSplitModalOpen(false)}
+        grandTotal={grandTotal}
+        discountAmount={discountAmount}
+        onSuccess={(saleId) => {
+          setIsSplitModalOpen(false);
+          const found = sales.find(s => s.id === saleId);
+          if (found) setCompletedSale(found);
+        }}
+      />
+
+      {/* Register Shift & Reconciliation Modal */}
+      <RegisterReconciliationModal
+        isOpen={isShiftModalOpen}
+        onClose={() => setIsShiftModalOpen(false)}
+      />
     </div>
   );
 };

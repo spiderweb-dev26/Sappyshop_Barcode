@@ -28,7 +28,9 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldAlert,
-  Package
+  Package,
+  PauseCircle,
+  Split
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -37,6 +39,7 @@ import { SappyLogoMark } from './SappyLogo';
 import { formatCurrency } from '../utils/currencyUtils';
 import { soundEffects } from '../utils/soundEffects';
 import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
+import { SplitPaymentModal } from './SplitPaymentModal';
 
 const SAPPY_PAYMENT_METHODS: { 
   id: PaymentMethod; 
@@ -65,7 +68,9 @@ export const CheckoutPage: React.FC = () => {
     currentUser, 
     setActiveTab, 
     setIsScannerModalOpen,
-    addToast 
+    addToast,
+    parkOrder,
+    sales
   } = useApp();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
@@ -75,6 +80,7 @@ export const CheckoutPage: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [orderNotes, setOrderNotes] = useState<string>('');
   const [completedSale, setCompletedSale] = useState<SaleRecord | null>(null);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
 
   // Financial calculations
   const subtotal = cart.reduce((acc, c) => acc + (c.unitPrice * c.quantity), 0);
@@ -471,11 +477,23 @@ export const CheckoutPage: React.FC = () => {
         </div>
 
         {/* Quick Top Actions */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => {
+              parkOrder(customerName ? `For ${customerName}` : undefined);
+              setActiveTab('pos');
+            }}
+            className="h-9 px-3.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            title="Hold this cart and return to POS register"
+          >
+            <PauseCircle className="w-3.5 h-3.5 text-amber-700" />
+            <span>Hold / Park Order</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsScannerModalOpen(true)}
-            className="flex-1 sm:flex-none h-9 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] border border-emerald-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            className="flex-1 sm:flex-none h-9 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] border border-emerald-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Scan className="w-3.5 h-3.5 text-[#064e3b]" />
             <span>Scan More</span>
@@ -488,7 +506,7 @@ export const CheckoutPage: React.FC = () => {
                 setActiveTab('pos');
               }
             }}
-            className="h-9 px-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+            className="h-9 px-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Clear Order</span>
@@ -854,7 +872,7 @@ export const CheckoutPage: React.FC = () => {
             </div>
 
             {/* Execute Sale Button (Desktop + Mobile) */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <button
                 type="submit"
                 disabled={cart.length === 0 || isCashInsufficient}
@@ -863,10 +881,41 @@ export const CheckoutPage: React.FC = () => {
                 <CheckCircle2 className="w-5 h-5 text-emerald-300" />
                 <span>Complete Sale &amp; Print ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
               </button>
+
+              {/* Split Tender Modal Button */}
+              <button
+                type="button"
+                disabled={cart.length === 0}
+                onClick={() => setIsSplitModalOpen(true)}
+                className="w-full h-11 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+              >
+                <Split className="w-4 h-4 text-emerald-700" />
+                <span>Split Tender (Multi-Payment Methods)</span>
+              </button>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Split Payment Modal */}
+      <SplitPaymentModal
+        isOpen={isSplitModalOpen}
+        onClose={() => setIsSplitModalOpen(false)}
+        grandTotal={grandTotal}
+        discountAmount={discountAmount}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        orderNotes={orderNotes}
+        onSuccess={(saleId) => {
+          setIsSplitModalOpen(false);
+          const found = sales.find(s => s.id === saleId);
+          if (found) {
+            setCompletedSale(found);
+          } else {
+            setActiveTab('sales');
+          }
+        }}
+      />
     </div>
   );
 };

@@ -26,6 +26,7 @@ import {
   ShoppingBag,
   ExternalLink
 } from 'lucide-react';
+import { CustomerStatementModal } from './CustomerStatementModal';
 
 export const CreditManagement: React.FC = () => {
   const { sales, settings, settleCustomerCredit, setActiveTab, currentUser } = useApp();
@@ -34,6 +35,10 @@ export const CreditManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNPAID_ONLY' | 'PARTIAL_ONLY' | 'SETTLED_ONLY'>('UNPAID_ONLY');
   const [viewMode, setViewMode] = useState<'invoices' | 'customers'>('invoices');
+
+  // Customer Statement Modal State
+  const [statementCustomer, setStatementCustomer] = useState<{ name: string; phone?: string } | null>(null);
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
 
   // Settlement Modal State
   const [settlingSale, setSettlingSale] = useState<SaleRecord | null>(null);
@@ -199,6 +204,18 @@ export const CreditManagement: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto">
+          <button
+            onClick={() => {
+              setStatementCustomer(null);
+              setIsStatementModalOpen(true);
+            }}
+            className="flex-1 md:flex-initial h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-[#dfd7c7] rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Generate printable statement of account / ledger"
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Account Statement</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('pos')}
             className="flex-1 md:flex-initial h-9 px-4 bg-[#064e3b] hover:bg-[#043b2c] text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
@@ -387,17 +404,31 @@ export const CreditManagement: React.FC = () => {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setSearchTerm(c.name);
-                      setViewMode('invoices');
-                      setStatusFilter('ALL');
-                    }}
-                    className="text-xs font-bold text-[#064e3b] hover:text-emerald-800 hover:underline flex items-center gap-0.5"
-                  >
-                    <span>View Invoices ({c.totalInvoices})</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setStatementCustomer({ name: c.name, phone: c.phone });
+                        setIsStatementModalOpen(true);
+                      }}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Generate Statement for this customer"
+                    >
+                      <FileText className="w-3 h-3 text-amber-800" />
+                      <span>Statement</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSearchTerm(c.name);
+                        setViewMode('invoices');
+                        setStatusFilter('ALL');
+                      }}
+                      className="text-xs font-bold text-[#064e3b] hover:text-emerald-800 hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span>Invoices ({c.totalInvoices})</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -766,6 +797,14 @@ export const CreditManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Customer Account Statement Modal */}
+      <CustomerStatementModal
+        isOpen={isStatementModalOpen}
+        onClose={() => setIsStatementModalOpen(false)}
+        customerName={statementCustomer?.name}
+        customerPhone={statementCustomer?.phone}
+      />
     </div>
   );
 };

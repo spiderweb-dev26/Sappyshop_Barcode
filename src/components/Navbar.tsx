@@ -14,6 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { UserPinModal } from './UserPinModal';
+import { UserProfilePictureModal } from './UserProfilePictureModal';
 import { SappyLogoMark } from './SappyLogo';
 import { PWAInstallButton } from './PWAInstallButton';
 import { formatCurrency } from '../utils/currencyUtils';
@@ -43,6 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isProfilePicModalOpen, setIsProfilePicModalOpen] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
 
@@ -285,21 +287,44 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* User Switch Badge */}
+            {/* User Switch Badge & Profile Photo */}
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setIsPinModalOpen(true)}
-                className="flex items-center gap-2 p-1 sm:p-1.5 sm:pr-3 rounded-full hover:bg-[#f8f4ec] border border-[#dfd7c7] transition-colors"
-                title="Switch user account"
-              >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#064e3b] text-white flex items-center justify-center text-xs font-bold shadow-2xs">
-                  {currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}
-                </div>
-                <div className="text-left hidden lg:block">
-                  <span className="text-xs font-bold text-slate-900 block leading-tight">{currentUser?.name || 'User'}</span>
-                  <span className="text-[10px] text-slate-500 font-mono uppercase">{currentUser?.role || 'STAFF'}</span>
-                </div>
-              </button>
+              <div className="flex items-center rounded-full bg-[#f8f4ec] border border-[#dfd7c7] p-1 shadow-2xs">
+                {/* Profile Photo button */}
+                <button
+                  type="button"
+                  onClick={() => setIsProfilePicModalOpen(true)}
+                  className={`relative group/navavatar w-7 h-7 sm:w-8 sm:h-8 rounded-full ${currentUser?.avatarColor || 'bg-[#064e3b]'} text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-2xs cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all shrink-0`}
+                  title="Click to update your profile photo"
+                >
+                  {currentUser?.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span>{currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}</span>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/navavatar:opacity-100 flex items-center justify-center transition-opacity">
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  </div>
+                </button>
+
+                {/* User Account Switch Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsPinModalOpen(true)}
+                  className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-0.5 text-left rounded-full hover:bg-[#eee7db] transition-colors"
+                  title="Switch user account"
+                >
+                  <div className="text-left hidden lg:block">
+                    <span className="text-xs font-bold text-slate-900 block leading-tight truncate max-w-[110px]">{currentUser?.name || 'User'}</span>
+                    <span className="text-[10px] text-slate-500 font-mono uppercase">{currentUser?.role || 'STAFF'}</span>
+                  </div>
+                </button>
+              </div>
 
               {/* Quick Logout Button */}
               <button
@@ -366,6 +391,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Switch PIN Modal */}
       {isPinModalOpen && (
         <UserPinModal onClose={() => setIsPinModalOpen(false)} />
+      )}
+
+      {/* Profile Picture Management Modal */}
+      {isProfilePicModalOpen && currentUser && (
+        <UserProfilePictureModal
+          isOpen={isProfilePicModalOpen}
+          onClose={() => setIsProfilePicModalOpen(false)}
+          targetUser={currentUser}
+        />
       )}
     </>
   );

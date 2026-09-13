@@ -24,11 +24,15 @@ import {
   Boxes,
   Camera,
   Image as ImageIcon,
-  Languages
+  Languages,
+  Truck,
+  ClipboardCheck
 } from 'lucide-react';
 import { ItemImageUploader } from './ItemImageUploader';
 import { QuickImageModal } from './QuickImageModal';
 import { BarcodeRenderer } from './BarcodeRenderer';
+import { SuppliersModal } from './SuppliersModal';
+import { StocktakeAuditModal } from './StocktakeAuditModal';
 import { 
   downloadExcelTemplate, 
   parseExcelOrCsvFile, 
@@ -80,6 +84,8 @@ export const InventoryList: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [barcodePreviewItem, setBarcodePreviewItem] = useState<InventoryItem | null>(null);
   const [quickImageItem, setQuickImageItem] = useState<InventoryItem | null>(null);
+  const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
+  const [isStocktakeModalOpen, setIsStocktakeModalOpen] = useState(false);
 
   // Stock Adjust form state
   const [adjustQty, setAdjustQty] = useState<number>(0);
@@ -251,11 +257,35 @@ export const InventoryList: React.FC = () => {
             <span>Excel Template</span>
           </button>
 
+          {/* Suppliers & Purchase Orders */}
+          {hasPermission(['ADMIN', 'MANAGER']) && (
+            <button
+              onClick={() => setIsSuppliersModalOpen(true)}
+              className="h-8 px-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 border border-blue-200 shadow-xs cursor-pointer"
+              title="Manage suppliers, contact info, and create Purchase Orders"
+            >
+              <Truck className="w-3.5 h-3.5 text-blue-600" />
+              <span>Suppliers &amp; PO</span>
+            </button>
+          )}
+
+          {/* Stocktake Audit */}
+          {hasPermission(['ADMIN', 'MANAGER']) && (
+            <button
+              onClick={() => setIsStocktakeModalOpen(true)}
+              className="h-8 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 border border-amber-300 shadow-xs cursor-pointer"
+              title="Physical inventory cycle count & discrepancy reconciliation"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5 text-amber-700" />
+              <span>Stocktake Audit</span>
+            </button>
+          )}
+
           {/* Import Items */}
           {hasPermission(['ADMIN', 'MANAGER']) && (
             <button
               onClick={() => setIsImportModalOpen(true)}
-              className="h-8 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 border border-emerald-200/80 shadow-xs"
+              className="h-8 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 border border-emerald-200/80 shadow-xs cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Import Excel/PDF</span>
@@ -265,14 +295,14 @@ export const InventoryList: React.FC = () => {
           {/* Export Report */}
           <button
             onClick={() => exportInventoryToExcel(filteredItems, settings)}
-            className="h-8 px-3 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 border border-slate-200 shadow-xs"
+            className="h-8 px-3 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 border border-slate-200 shadow-xs cursor-pointer"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             <span>Export Excel</span>
           </button>
           <button
             onClick={() => exportInventoryToPdf(filteredItems, settings)}
-            className="h-8 px-3 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 border border-slate-200 shadow-xs"
+            className="h-8 px-3 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 border border-slate-200 shadow-xs cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-emerald-600" />
             <span>Export PDF</span>
@@ -285,7 +315,7 @@ export const InventoryList: React.FC = () => {
                 setEditingItem(null);
                 setIsAddModalOpen(true);
               }}
-              className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5"
+              className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add New Item</span>
@@ -1126,6 +1156,18 @@ export const InventoryList: React.FC = () => {
           }}
         />
       )}
+
+      {/* Suppliers Management & Purchase Orders Modal */}
+      <SuppliersModal
+        isOpen={isSuppliersModalOpen}
+        onClose={() => setIsSuppliersModalOpen(false)}
+      />
+
+      {/* Stocktake Audit & Inventory Cycle Count Modal */}
+      <StocktakeAuditModal
+        isOpen={isStocktakeModalOpen}
+        onClose={() => setIsStocktakeModalOpen(false)}
+      />
     </div>
   );
 };
@@ -1150,6 +1192,8 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
   const [costPrice, setCostPrice] = useState(initialItem?.costPrice?.toString() || '');
   const [sellingPrice, setSellingPrice] = useState(initialItem?.sellingPrice?.toString() || '');
   const [stock, setStock] = useState(initialItem?.stock?.toString() || '10');
+  const [wholesalePrice, setWholesalePrice] = useState(initialItem?.wholesalePrice?.toString() || '');
+  const [wholesaleMinQty, setWholesaleMinQty] = useState(initialItem?.wholesaleMinQty?.toString() || '');
   const [location, setLocation] = useState(initialItem?.location || '');
   const [description, setDescription] = useState(initialItem?.description || '');
   const [imageUrl, setImageUrl] = useState<string | undefined>(initialItem?.imageUrl);
@@ -1157,6 +1201,8 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
   React.useEffect(() => {
     setImageUrl(initialItem?.imageUrl);
     setNameAmharic(initialItem?.nameAmharic || '');
+    setWholesalePrice(initialItem?.wholesalePrice?.toString() || '');
+    setWholesaleMinQty(initialItem?.wholesaleMinQty?.toString() || '');
   }, [initialItem]);
 
   if (!isOpen) return null;
@@ -1230,6 +1276,8 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
       location: location.trim() || undefined,
       description: description.trim() || undefined,
       imageUrl: imageUrl || undefined,
+      wholesalePrice: wholesalePrice ? parseFloat(wholesalePrice) : undefined,
+      wholesaleMinQty: wholesaleMinQty ? parseInt(wholesaleMinQty, 10) : undefined,
     });
   };
 
@@ -1481,6 +1529,38 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, initialItem, onClos
                     </>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Wholesale / Bulk Tier Pricing */}
+          <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-blue-900">Wholesale / Bulk Tier (Optional)</h4>
+              <span className="text-[10px] text-blue-700 font-medium">Automatic POS discount threshold</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 mb-1 block">Wholesale Unit Price ({settings.currencySymbol})</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={wholesalePrice}
+                  onChange={(e) => setWholesalePrice(e.target.value)}
+                  placeholder="e.g. 130.00"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-blue-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 mb-1 block">Min Bulk Qty Threshold</label>
+                <input
+                  type="number"
+                  min="2"
+                  value={wholesaleMinQty}
+                  onChange={(e) => setWholesaleMinQty(e.target.value)}
+                  placeholder="e.g. 10"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                />
               </div>
             </div>
           </div>

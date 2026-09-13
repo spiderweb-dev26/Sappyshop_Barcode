@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Search, 
@@ -53,6 +53,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isProfilePicModalOpen, setIsProfilePicModalOpen] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    if (isMoreMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMoreMenuOpen]);
 
   const cartItemCount = (cart || []).reduce((acc, c) => acc + (c?.quantity || 0), 0);
 
@@ -190,13 +215,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Right: Actions, Fiscal Year, Quick POS, and User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Right: Actions, POS Cart, Approvals, Profile, and More (3 dashes) Bar */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Mobile Search Toggle */}
             <button
               type="button"
               onClick={() => setIsMobileSearchExpanded(!isMobileSearchExpanded)}
-              className="md:hidden p-2 rounded-full bg-[#f8f4ec] hover:bg-[#eee7db] text-[#064e3b] border border-[#dfd7c7] transition-colors"
+              className="md:hidden p-2 rounded-full bg-[#f8f4ec] hover:bg-[#eee7db] text-[#064e3b] border border-[#dfd7c7] transition-colors cursor-pointer"
               aria-label="Open search"
             >
               <Search className="w-4 h-4" />
@@ -206,16 +231,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => setIsScannerModalOpen(true)}
-              className="md:hidden p-2 rounded-full bg-[#f8f4ec] hover:bg-emerald-50 text-[#064e3b] border border-[#dfd7c7] transition-colors"
+              className="md:hidden p-2 rounded-full bg-[#f8f4ec] hover:bg-emerald-50 text-[#064e3b] border border-[#dfd7c7] transition-colors cursor-pointer"
               aria-label="Scan barcode"
             >
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* Quick POS Cart Pill on Mobile/Tablet */}
+            {/* Quick POS Cart Pill */}
             <button
               onClick={() => setActiveTab('pos')}
-              className="relative p-2 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] border border-emerald-200 transition-colors flex items-center gap-1.5"
+              className="relative p-2 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] border border-emerald-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               aria-label="View Cart"
             >
               <ShoppingBag className="w-4 h-4 text-[#064e3b]" />
@@ -227,102 +252,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* PWA Mobile & Desktop Install Button */}
-            <PWAInstallButton variant="compact" />
-
-            {/* Global Theme Mode Toggle (Light Mode vs. High-Contrast Dark Mode for Dim Environments) */}
-            <button
-              type="button"
-              onClick={toggleThemeMode}
-              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-[#dfd7c7] dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs"
-              title={
-                themeMode === 'dark' 
-                  ? 'Active: High-Contrast Dark Mode (Dim Store Environments). Click to switch to Light Mode.' 
-                  : 'Active: Default Light Mode. Click to switch to High-Contrast Dark Mode for dim store lighting.'
-              }
-              aria-label="Toggle Theme Mode"
-            >
-              {themeMode === 'dark' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-                  <span className="hidden md:inline text-[11px] font-bold text-amber-300">Light Mode</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-[#064e3b] dark:text-emerald-400 shrink-0" />
-                  <span className="hidden md:inline text-[11px] font-bold text-slate-800 dark:text-slate-200">Dark Mode</span>
-                </>
-              )}
-            </button>
-
-            {/* Desktop Cashier Keyboard Shortcuts Button */}
-            <button
-              type="button"
-              onClick={() => setIsShortcutsModalOpen(true)}
-              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-[#dfd7c7] dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs"
-              title="Desktop Cashier Keyboard Shortcuts (Press F1 or ?)"
-              aria-label="Desktop Cashier Keyboard Shortcuts"
-            >
-              <Keyboard className="w-3.5 h-3.5 text-[#064e3b] dark:text-emerald-400 shrink-0" />
-              <span className="hidden xl:inline text-[11px] font-bold">Shortcuts</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono font-bold bg-[#e8e2d5] dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-[#dfd7c7] dark:border-slate-600">
-                F1
-              </kbd>
-            </button>
-
-            {/* Cloud Firestore Status & Quick Sync Pill */}
-            <button
-              type="button"
-              onClick={() => syncToCloudNow()}
-              disabled={cloudSyncStatus === 'syncing'}
-              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-[#dfd7c7] dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-              title={
-                cloudSyncStatus === 'synced'
-                  ? 'Firestore Cloud Database: Synchronized across all staff accounts. Click to force sync now.'
-                  : cloudSyncStatus === 'syncing'
-                  ? 'Firestore Cloud Database: Synchronizing updates...'
-                  : cloudSyncStatus === 'error'
-                  ? 'Firestore Cloud Database: Sync error. Click to retry sync now.'
-                  : 'Firestore Cloud Database: Connected and synchronized.'
-              }
-            >
-              {cloudSyncStatus === 'syncing' ? (
-                <RefreshCw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-spin" />
-              ) : (
-                <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-700 dark:text-emerald-400' : cloudSyncStatus === 'error' ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'}`} />
-              )}
-              <span className="hidden sm:inline text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                {cloudSyncStatus === 'synced'
-                  ? 'Cloud Synced'
-                  : cloudSyncStatus === 'syncing'
-                  ? 'Syncing...'
-                  : cloudSyncStatus === 'error'
-                  ? 'Sync Error'
-                  : 'Cloud Synced'}
-              </span>
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  cloudSyncStatus === 'error'
-                    ? 'bg-rose-500 animate-pulse'
-                    : cloudSyncStatus === 'syncing'
-                    ? 'bg-amber-500 animate-pulse'
-                    : 'bg-emerald-500'
-                }`}
-              />
-            </button>
-
-            {/* Fiscal Year Status (Desktop) */}
-            <div className="hidden xl:flex items-center gap-2 bg-[#f8f4ec] dark:bg-slate-800 border border-[#dfd7c7] dark:border-slate-700 px-3.5 py-1.5 rounded-full">
-              <Calendar className="w-3.5 h-3.5 text-[#064e3b] dark:text-emerald-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Fiscal Year 2026</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            </div>
-
-            {/* Pending Approvals Alert for Admin */}
+            {/* Pending Approvals Alert for Admin (Only shown if pending review) */}
             {currentUser?.role === 'ADMIN' && (users || []).some(u => u?.approvalStatus === 'PENDING') && (
               <button
                 onClick={() => setActiveTab('users')}
-                className="relative p-2 sm:px-2.5 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/70 transition-colors flex items-center gap-1.5"
+                className="relative p-2 sm:px-2.5 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/70 transition-colors flex items-center gap-1.5 cursor-pointer"
                 title="Staff account approvals pending review"
               >
                 <UserCheck className="w-4 h-4 text-amber-700 dark:text-amber-400" />
@@ -334,53 +268,226 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* User Switch Badge & Profile Photo */}
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center rounded-full bg-[#f8f4ec] dark:bg-slate-800 border border-[#dfd7c7] dark:border-slate-700 p-1 shadow-2xs">
-                {/* Profile Photo button */}
-                <button
-                  type="button"
-                  onClick={() => setIsProfilePicModalOpen(true)}
-                  className={`relative group/navavatar w-7 h-7 sm:w-8 sm:h-8 rounded-full ${currentUser?.avatarColor || 'bg-[#064e3b]'} text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-2xs cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all shrink-0`}
-                  title="Click to update your profile photo"
-                >
-                  {currentUser?.avatar ? (
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.name}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <span>{currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}</span>
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/navavatar:opacity-100 flex items-center justify-center transition-opacity">
-                    <Camera className="w-3.5 h-3.5 text-white" />
-                  </div>
-                </button>
-
-                {/* User Account Switch Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsPinModalOpen(true)}
-                  className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-0.5 text-left rounded-full hover:bg-[#eee7db] dark:hover:bg-slate-700 transition-colors"
-                  title="Switch user account"
-                >
-                  <div className="text-left hidden lg:block">
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block leading-tight truncate max-w-[110px]">{currentUser?.name || 'User'}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono uppercase">{currentUser?.role || 'STAFF'}</span>
-                  </div>
-                </button>
-              </div>
-
-              {/* Quick Logout Button */}
+            <div className="flex items-center rounded-full bg-[#f8f4ec] dark:bg-slate-800 border border-[#dfd7c7] dark:border-slate-700 p-1 shadow-2xs">
               <button
-                onClick={() => logoutUser()}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-500 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-300 border border-[#dfd7c7] dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 transition-colors flex items-center gap-1.5 text-xs font-medium"
-                title="Sign out of Sappy POS"
+                type="button"
+                onClick={() => setIsProfilePicModalOpen(true)}
+                className={`relative group/navavatar w-7 h-7 sm:w-8 sm:h-8 rounded-full ${currentUser?.avatarColor || 'bg-[#064e3b]'} text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-2xs cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all shrink-0`}
+                title="Click to update your profile photo"
               >
-                <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <span className="hidden xl:inline text-[11px] font-semibold text-rose-700 dark:text-rose-300">Logout</span>
+                {currentUser?.avatar ? (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span>{currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}</span>
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/navavatar:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera className="w-3.5 h-3.5 text-white" />
+                </div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setIsPinModalOpen(true)}
+                className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-0.5 text-left rounded-full hover:bg-[#eee7db] dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                title="Switch user account"
+              >
+                <div className="text-left hidden md:block">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block leading-tight truncate max-w-[100px]">{currentUser?.name || 'User'}</span>
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono uppercase">{currentUser?.role || 'STAFF'}</span>
+                </div>
+              </button>
+            </div>
+
+            {/* More Bar (3 Dashes Menu) */}
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border transition-all duration-150 cursor-pointer shadow-2xs ${
+                  isMoreMenuOpen
+                    ? 'bg-[#064e3b] text-white border-[#064e3b] dark:bg-emerald-700 dark:border-emerald-600 ring-2 ring-emerald-500/30'
+                    : 'bg-[#f8f4ec] hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border-[#dfd7c7] dark:border-slate-700'
+                }`}
+                title="System Tools & Options (3 dashes)"
+                aria-label="More options (3 dashes)"
+                aria-expanded={isMoreMenuOpen}
+              >
+                {/* 3 Dashes (Horizontal bars) Icon */}
+                <div className="flex flex-col gap-[3px] justify-center items-center w-3.5 h-3.5 shrink-0" aria-hidden="true">
+                  <span className={`w-3.5 h-[2px] rounded-full transition-colors ${isMoreMenuOpen ? 'bg-white' : 'bg-slate-700 dark:bg-slate-200'}`}></span>
+                  <span className={`w-3.5 h-[2px] rounded-full transition-colors ${isMoreMenuOpen ? 'bg-white' : 'bg-slate-700 dark:bg-slate-200'}`}></span>
+                  <span className={`w-3.5 h-[2px] rounded-full transition-colors ${isMoreMenuOpen ? 'bg-white' : 'bg-slate-700 dark:bg-slate-200'}`}></span>
+                </div>
+                <span className="text-xs font-bold hidden sm:inline">More</span>
+              </button>
+
+              {/* More Dropdown Panel */}
+              {isMoreMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#fdfbf7] dark:bg-slate-900 rounded-2xl shadow-2xl border border-[#dfd7c7] dark:border-slate-700 p-2.5 z-50 text-slate-800 dark:text-slate-100 animate-in fade-in-50 zoom-in-95 duration-150">
+                  {/* Dropdown Header */}
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#dfd7c7] dark:border-slate-800 px-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex flex-col gap-[2px] justify-center items-center w-3 h-3">
+                        <span className="w-3 h-[2px] bg-[#064e3b] dark:bg-emerald-400 rounded-full"></span>
+                        <span className="w-3 h-[2px] bg-[#064e3b] dark:bg-emerald-400 rounded-full"></span>
+                        <span className="w-3 h-[2px] bg-[#064e3b] dark:bg-emerald-400 rounded-full"></span>
+                      </div>
+                      <span className="font-bold text-xs text-slate-900 dark:text-slate-100">System &amp; Store Controls</span>
+                    </div>
+                    <span className="text-[9px] font-mono font-bold bg-[#e8e2d5] dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-[#dfd7c7] dark:border-slate-700">
+                      FY 2026
+                    </span>
+                  </div>
+
+                  {/* Cloud Firestore Status Card & Quick Sync */}
+                  <div className="p-2 rounded-xl bg-[#f8f4ec] dark:bg-slate-800/80 border border-[#dfd7c7] dark:border-slate-700/80 mb-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {cloudSyncStatus === 'syncing' ? (
+                          <RefreshCw className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-spin shrink-0" />
+                        ) : (
+                          <Cloud className={`w-4 h-4 shrink-0 ${cloudSyncStatus === 'synced' ? 'text-emerald-700 dark:text-emerald-400' : cloudSyncStatus === 'error' ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">Firestore Cloud</p>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cloudSyncStatus === 'error' ? 'bg-rose-500 animate-pulse' : cloudSyncStatus === 'syncing' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            {cloudSyncStatus === 'synced' ? 'Synchronized across staff' : cloudSyncStatus === 'syncing' ? 'Syncing updates...' : 'Sync error - tap retry'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => syncToCloudNow()}
+                        disabled={cloudSyncStatus === 'syncing'}
+                        className="px-2.5 py-1 text-[11px] font-bold bg-[#064e3b] hover:bg-[#043e2f] text-white dark:bg-emerald-700 dark:hover:bg-emerald-600 rounded-lg shadow-2xs transition-colors disabled:opacity-60 cursor-pointer flex items-center gap-1 shrink-0"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${cloudSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                        <span>Sync</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Store Lighting Theme Mode */}
+                  <button
+                    type="button"
+                    onClick={toggleThemeMode}
+                    className="w-full p-2 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-slate-800 transition-colors flex items-center justify-between text-left cursor-pointer group mb-1"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-amber-100/70 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                        {themeMode === 'dark' ? (
+                          <Sun className="w-4 h-4 text-amber-500 animate-pulse" />
+                        ) : (
+                          <Moon className="w-4 h-4 text-slate-700" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Store Lighting Theme</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {themeMode === 'dark' ? 'Dim Store Dark Mode Active' : 'Stationery Light Mode Active'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f8f4ec] dark:bg-slate-800 border border-[#dfd7c7] dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                      {themeMode === 'dark' ? 'DARK' : 'LIGHT'}
+                    </span>
+                  </button>
+
+                  {/* Cashier Keyboard Shortcuts */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsShortcutsModalOpen(true);
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className="w-full p-2 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-slate-800 transition-colors flex items-center justify-between text-left cursor-pointer mb-1"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-[#064e3b] dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Keyboard className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Keyboard Shortcuts</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Cashier hotkeys &amp; POS actions</p>
+                      </div>
+                    </div>
+                    <kbd className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#e8e2d5] dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-[#dfd7c7] dark:border-slate-700">
+                      F1
+                    </kbd>
+                  </button>
+
+                  {/* Fiscal Year Accounting Period */}
+                  <div className="p-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors flex items-center justify-between text-left mb-1">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 flex items-center justify-center shrink-0">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Fiscal Period</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Fiscal Year 2026 (Tax Reporting Active)</p>
+                      </div>
+                    </div>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+
+                  {/* Barcode Camera Scanner */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsScannerModalOpen(true);
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className="w-full p-2 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-slate-800 transition-colors flex items-center justify-between text-left cursor-pointer mb-1"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 flex items-center justify-center shrink-0">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Camera Barcode Scanner</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Camera 0 (Back facing)</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">SCAN</span>
+                  </button>
+
+                  {/* Download POS App */}
+                  <PWAInstallButton
+                    variant="menu-item"
+                    onActionComplete={() => setIsMoreMenuOpen(false)}
+                  />
+
+                  {/* Divider and Log Out */}
+                  <div className="pt-2 mt-1.5 border-t border-[#dfd7c7] dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        logoutUser();
+                      }}
+                      className="w-full p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-700 dark:text-rose-300 transition-colors flex items-center justify-between text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
+                          <LogOut className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">Sign Out</p>
+                          <p className="text-[10px] text-rose-600/80 dark:text-rose-400/80">End session &amp; lock register</p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

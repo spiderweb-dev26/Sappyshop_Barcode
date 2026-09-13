@@ -151,17 +151,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarContent = (
-    <aside className="w-64 lg:w-56 bg-[#064e3b] text-white flex flex-col shrink-0 select-none min-h-full p-4 justify-between border-r border-[#043b2c] shadow-xl lg:shadow-none overflow-y-auto">
-      {/* Top Logo Emblem & Mobile Close */}
-      <div>
-        <div className="flex items-center justify-between py-2 mb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-900/80 rounded-2xl border border-emerald-600/50 shadow-inner">
-              <SappyLogoMark size={34} color="#6ee7b7" />
+    <aside className="w-64 lg:w-56 bg-[#064e3b] text-white flex flex-col shrink-0 select-none h-full max-h-full p-2.5 sm:p-3 justify-between border-r border-[#043b2c] shadow-xl lg:shadow-none overflow-hidden">
+      {/* Top Section: Logo Emblem & Access Scope */}
+      <div className="shrink-0">
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-800/60">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 bg-emerald-900/90 rounded-xl border border-emerald-600/50 shadow-inner shrink-0">
+              <SappyLogoMark size={26} color="#6ee7b7" />
             </div>
-            <div>
-              <p className="font-extrabold text-sm text-white tracking-wide">SAPPY</p>
-              <p className="text-[10px] text-emerald-200 font-serif italic">stationery &amp; printing.</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="font-extrabold text-xs text-white tracking-wider">SAPPY</p>
+                <span className="text-[8px] font-mono font-bold bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-600/40 uppercase">
+                  {currentUser.role}
+                </span>
+              </div>
+              <p className="text-[9px] text-emerald-200/80 font-serif italic truncate">stationery &amp; printing.</p>
             </div>
           </div>
 
@@ -169,72 +174,64 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="lg:hidden p-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 transition-colors"
+            className="lg:hidden p-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 transition-colors cursor-pointer"
             aria-label="Close menu"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Access Scope Banner */}
-        <div className="p-2.5 mb-3 bg-[#043b2c] rounded-xl border border-emerald-800/80 flex items-center justify-between text-xs">
-          <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Access Scope</span>
-          <span className="text-[9px] font-mono font-bold bg-emerald-800 text-emerald-100 px-2 py-0.5 rounded border border-emerald-600/50">
-            {currentUser.role}
-          </span>
-        </div>
-
-        {/* Navigation List matching modern pill design in emerald theme */}
-        <nav className="space-y-1.5">
-          {navItems.map((item) => {
-            const isAllowed = item.allowedRoles.includes(currentUser.role);
-            const isActive = activeTab === item.id || (item.id === 'pos' && activeTab === 'checkout');
-            const Icon = item.icon;
-
-            if (!isAllowed) {
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between px-3.5 py-2 text-emerald-300/30 text-xs font-medium cursor-not-allowed rounded-full"
-                  title={`Requires ${item.allowedRoles.join(' or ')} role`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-3.5 h-3.5 opacity-30" />
-                    <span>{item.label}</span>
-                  </div>
-                  <Lock className="w-3 h-3 text-emerald-300/25" />
-                </div>
-              );
-            }
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSelectNav(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-all duration-150 rounded-full ${
-                  isActive
-                    ? 'bg-[#fdfbf7] text-[#064e3b] font-bold shadow-md scale-[1.02]'
-                    : 'text-emerald-100/85 hover:text-white hover:bg-emerald-900/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#064e3b]' : 'text-emerald-300'}`} />
-                  <span>{item.label}</span>
-                </div>
-
-                {item.badge && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold shadow-xs ${item.badgeColor || 'bg-emerald-800 text-emerald-100'}`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
       </div>
 
-      {/* Bottom User Card & Logout in Sidebar */}
-      <div className="mt-4 pt-3 border-t border-emerald-800/80 space-y-2">
+      {/* Navigation List - Scrollable if screen height is constrained, fits screen on standard laptops/PCs */}
+      <nav className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-0.5 sm:space-y-1 scrollbar-thin">
+        {navItems.map((item) => {
+          const isAllowed = item.allowedRoles.includes(currentUser.role);
+          const isActive = activeTab === item.id || (item.id === 'pos' && activeTab === 'checkout');
+          const Icon = item.icon;
+
+          if (!isAllowed) {
+            return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between px-2.5 py-1.5 text-emerald-300/30 text-xs font-medium cursor-not-allowed rounded-lg"
+                title={`Requires ${item.allowedRoles.join(' or ')} role`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="w-3.5 h-3.5 opacity-30 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                <Lock className="w-3 h-3 text-emerald-300/25 shrink-0" />
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleSelectNav(item.id)}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium transition-all duration-150 rounded-lg cursor-pointer ${
+                isActive
+                  ? 'bg-[#fdfbf7] text-[#064e3b] font-bold shadow-sm'
+                  : 'text-emerald-100/85 hover:text-white hover:bg-emerald-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#064e3b]' : 'text-emerald-300'}`} />
+                <span className="truncate">{item.label}</span>
+              </div>
+
+              {item.badge && (
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold shadow-xs shrink-0 ${item.badgeColor || 'bg-emerald-800 text-emerald-100'}`}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Bottom Section: Shift Status, Download App Sign, Tools, & User Card */}
+      <div className="mt-2 pt-2 border-t border-emerald-800/80 space-y-1.5 shrink-0">
         {/* Register Shift Status Indicator */}
         {activeShift ? (
           <div 
@@ -242,14 +239,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('pos');
               if (onCloseMobile) onCloseMobile();
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 flex items-center justify-between text-[11px] cursor-pointer hover:bg-emerald-950 transition-colors"
+            className="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-between text-[11px] cursor-pointer hover:bg-emerald-950 transition-colors"
             title="Active Register Shift - Click to view in POS"
           >
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-200 font-medium">Shift #{activeShift.shiftNumber} Active</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="text-emerald-200 text-[10px] font-medium truncate">Shift #{activeShift.shiftNumber} Active</span>
             </div>
-            <span className="text-[10px] text-emerald-400 font-mono font-bold">OPEN</span>
+            <span className="text-[9px] text-emerald-400 font-mono font-bold shrink-0">OPEN</span>
           </div>
         ) : (
           <div 
@@ -257,76 +254,65 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('pos');
               if (onCloseMobile) onCloseMobile();
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-900/50 border border-slate-700/50 flex items-center justify-between text-[11px] cursor-pointer hover:bg-slate-900 transition-colors"
-            title="Register is currently closed - Click to open shift in POS"
+            className="px-2.5 py-1 rounded-lg bg-slate-900/60 border border-slate-700/50 flex items-center justify-between text-[11px] cursor-pointer hover:bg-slate-900 transition-colors"
+            title="Register is closed - Click to open shift in POS"
           >
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span className="text-slate-300 font-medium">Register Closed</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+              <span className="text-slate-300 text-[10px] font-medium truncate">Register Closed</span>
             </div>
-            <span className="text-[10px] text-amber-300 font-bold hover:underline">Open Shift</span>
+            <span className="text-[9px] text-amber-300 font-bold hover:underline shrink-0">Open Shift</span>
           </div>
         )}
 
-        <PWAInstallButton variant="banner" />
+        {/* Utility row: Download App Sign (hover explains purpose) + Theme + Shortcuts */}
+        <div className="flex items-center justify-between gap-1 pt-0.5">
+          {/* Download App Sign with hover explanation tooltip card */}
+          <PWAInstallButton variant="sign" />
 
-        {/* Global Store Lighting Theme Toggle */}
-        <button
-          type="button"
-          onClick={toggleThemeMode}
-          className="w-full px-2.5 py-2 rounded-xl bg-[#043b2c] hover:bg-emerald-900/80 border border-emerald-800/80 flex items-center justify-between text-xs transition-colors cursor-pointer group"
-          title={themeMode === 'dark' ? 'Dark Mode Active: Click to switch to Light Mode' : 'Light Mode Active: Click to switch to High-Contrast Dark Mode (for dim store lighting)'}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            {themeMode === 'dark' ? (
-              <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:rotate-45 transition-transform" />
-            ) : (
-              <Moon className="w-3.5 h-3.5 text-emerald-300 shrink-0 group-hover:-rotate-12 transition-transform" />
-            )}
-            <span className="text-[11px] font-medium text-emerald-100 truncate">
-              {themeMode === 'dark' ? 'Dim Store Dark Mode' : 'Stationery Light Mode'}
-            </span>
+          <div className="flex items-center gap-1">
+            {/* Theme Mode Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleThemeMode}
+              className="p-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 text-emerald-300 hover:text-white transition-colors cursor-pointer"
+              title={themeMode === 'dark' ? 'Dark Mode Active: Click to switch to Light Mode' : 'Light Mode Active: Click to switch to Dim Store Dark Mode'}
+              aria-label="Toggle Theme Mode"
+            >
+              {themeMode === 'dark' ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-emerald-300" />
+              )}
+            </button>
+
+            {/* Desktop Keyboard Shortcuts Modal Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsShortcutsModalOpen(true);
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className="p-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 text-emerald-300 hover:text-white transition-colors cursor-pointer"
+              title="Cashier Keyboard Shortcuts (F1)"
+              aria-label="Keyboard shortcuts"
+            >
+              <Keyboard className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-            themeMode === 'dark' 
-              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' 
-              : 'bg-emerald-900/90 text-emerald-200 border border-emerald-700/50'
-          }`}>
-            {themeMode === 'dark' ? 'HIGH CONTRAST' : 'LIGHT'}
-          </span>
-        </button>
+        </div>
 
-        {/* Desktop Cashier Keyboard Shortcuts Cheat Sheet */}
-        <button
-          type="button"
-          onClick={() => {
-            setIsShortcutsModalOpen(true);
-            if (onCloseMobile) onCloseMobile();
-          }}
-          className="w-full px-2.5 py-2 rounded-xl bg-[#043b2c] hover:bg-emerald-900/80 border border-emerald-800/80 flex items-center justify-between text-xs transition-colors cursor-pointer group"
-          title="Desktop Cashier Keyboard Shortcuts (F1 or ?)"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Keyboard className="w-3.5 h-3.5 text-emerald-300 shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="text-[11px] font-medium text-emerald-100 truncate">
-              Keyboard Shortcuts
-            </span>
-          </div>
-          <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-900/90 text-emerald-200 border border-emerald-700/50">
-            F1
-          </kbd>
-        </button>
-
-        <div className="p-2 rounded-2xl bg-[#043b2c] border border-emerald-800/60 flex items-center justify-between gap-2">
+        {/* User Profile Card & Quick Logout */}
+        <div className="p-1.5 rounded-xl bg-[#043b2c] border border-emerald-800/70 flex items-center justify-between gap-2">
           <button
             onClick={() => {
               setIsPinModalOpen(true);
               if (onCloseMobile) onCloseMobile();
             }}
-            className="flex items-center gap-2.5 min-w-0 flex-1 text-left group hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 min-w-0 flex-1 text-left group hover:opacity-90 transition-opacity cursor-pointer"
             title="Switch User Profile"
           >
-            <div className={`w-8 h-8 rounded-full ${currentUser?.avatarColor || 'bg-emerald-700'} border border-emerald-500/50 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs overflow-hidden`}>
+            <div className={`w-7 h-7 rounded-full ${currentUser?.avatarColor || 'bg-emerald-700'} border border-emerald-500/50 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs overflow-hidden`}>
               {currentUser?.avatar ? (
                 <img 
                   src={currentUser.avatar} 
@@ -342,7 +328,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <p className="text-xs font-bold text-emerald-50 truncate leading-tight group-hover:text-emerald-200 transition-colors">
                 {currentUser?.name || 'Staff User'}
               </p>
-              <span className="text-[10px] text-emerald-300/80 font-mono uppercase">
+              <span className="text-[9px] text-emerald-300/80 font-mono uppercase">
                 {currentUser?.role || 'STAFF'}
               </span>
             </div>
@@ -353,10 +339,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               logoutUser();
               if (onCloseMobile) onCloseMobile();
             }}
-            className="p-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-300 hover:text-rose-100 transition-colors shrink-0"
+            className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/80 border border-rose-800/50 text-rose-300 hover:text-rose-100 transition-colors shrink-0 cursor-pointer"
             title="Log Out of System"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -366,7 +352,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Sticky Sidebar (Hidden on Mobile, Tablet, & Print) */}
-      <div className="hidden lg:flex shrink-0 min-h-[calc(100vh-4rem)] print:hidden">
+      <div className="hidden lg:flex shrink-0 h-full max-h-full print:hidden">
         {sidebarContent}
       </div>
 

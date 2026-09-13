@@ -16,10 +16,6 @@ service cloud.firestore {
     match /logs/{logId} {
       allow read, write: if true;
     }
-    match /settings/system_state {
-      allow read: if true;
-      allow write: if false;
-    }
     match /settings/{settingId} {
       allow read, write: if true;
     }

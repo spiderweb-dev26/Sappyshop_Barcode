@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --color-emerald-main: #064e3b;
@@ -10,6 +12,18 @@
     --color-beige-card: #f8f4ec;
     --color-beige-muted: #eee7db;
     --color-beige-border: #dfd7c7;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    --color-emerald-main: #10b981;
+    --color-emerald-deep: #064e3b;
+    --color-emerald-accent: #34d399;
+    --color-beige-canvas: #080c14;
+    --color-beige-surface: #0f172a;
+    --color-beige-card: #162032;
+    --color-beige-muted: #243247;
+    --color-beige-border: #2e3e56;
   }
 
   html, body, #root {
@@ -25,6 +39,11 @@
     background-color: #f5f1e8;
     color: #26201b;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  html.dark body {
+    background-color: #080c14;
+    color: #f8fafc;
   }
 
   /* Smooth sleek scrollbars with warm emerald styling */
@@ -45,6 +64,122 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #059669;
   }
+
+  html.dark ::-webkit-scrollbar-track {
+    background: #0b111d;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb {
+    background: #25364e;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #10b981;
+  }
+}
+
+/* ==========================================================================
+   HIGH-CONTRAST DARK MODE OVERRIDES (DIM STORE ENVIRONMENTS)
+   Guarantees maximum legibility, eliminates eye strain, and preserves print fidelity
+   ========================================================================== */
+html.dark .bg-\[\#f5f1e8\] {
+  background-color: #080c14 !important;
+}
+
+html.dark .bg-\[\#fdfbf7\] {
+  background-color: #0f172a !important;
+}
+
+html.dark .bg-\[\#f8f4ec\] {
+  background-color: #162032 !important;
+}
+
+html.dark .bg-\[\#eee7db\] {
+  background-color: #24334a !important;
+}
+
+html.dark .border-\[\#dfd7c7\] {
+  border-color: #26364e !important;
+}
+
+html.dark .border-\[\#eee7db\] {
+  border-color: #1e2c40 !important;
+}
+
+/* Dark mode for standard surface cards and panels (excluding print materials) */
+html.dark .bg-white:not(.no-dark, #printable-receipt-area, #printable-receipt-area *, #printable-label-sheet, #printable-label-sheet *, .barcode-label-card, .barcode-label-card *) {
+  background-color: #0f172a !important;
+  color: #f8fafc;
+}
+
+html.dark .bg-slate-50:not(.no-dark, #printable-receipt-area, #printable-receipt-area *, #printable-label-sheet, #printable-label-sheet *) {
+  background-color: #151f30 !important;
+}
+
+html.dark .bg-slate-100:not(.no-dark, #printable-receipt-area, #printable-receipt-area *, #printable-label-sheet, #printable-label-sheet *) {
+  background-color: #1d293d !important;
+}
+
+html.dark .bg-emerald-50:not(.no-dark) {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+}
+
+/* High contrast typography in dark mode */
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+/* Borders in high contrast dark mode */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300 {
+  border-color: #25354c !important;
+}
+
+html.dark .border-emerald-100,
+html.dark .border-emerald-200 {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/60 {
+  border-color: rgba(51, 65, 85, 0.7) !important;
+}
+
+/* Form inputs & controls in high-contrast dark mode */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+html.dark select,
+html.dark textarea {
+  background-color: #162032 !important;
+  color: #f8fafc !important;
+  border-color: #2f4362 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
 }
 
 /* ==========================================================================

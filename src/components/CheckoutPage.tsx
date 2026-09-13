@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { PaymentMethod, SaleRecord, getPaymentMethodLabel } from '../types';
 import { 
@@ -30,7 +30,8 @@ import {
   ShieldAlert,
   Package,
   PauseCircle,
-  Split
+  Split,
+  Keyboard
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -70,7 +71,9 @@ export const CheckoutPage: React.FC = () => {
     setIsScannerModalOpen,
     addToast,
     parkOrder,
-    sales
+    sales,
+    startNewSale,
+    setIsShortcutsModalOpen
   } = useApp();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
@@ -103,8 +106,7 @@ export const CheckoutPage: React.FC = () => {
     setAmountPaidInput(amt.toFixed(2));
   };
 
-  const handleExecuteCheckout = (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeCheckoutNow = useCallback(() => {
     if (cart.length === 0) {
       addToast('warning', 'Cart is Empty', 'Please scan or add items before checkout.');
       return;
@@ -139,7 +141,67 @@ export const CheckoutPage: React.FC = () => {
         // Confetti fallback
       }
     }
+  }, [
+    cart.length,
+    paymentMethod,
+    customerName,
+    amountPaidInput,
+    grandTotal,
+    checkoutSale,
+    customerPhone,
+    orderNotes,
+    discountAmount,
+    addToast
+  ]);
+
+  const handleExecuteCheckout = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeCheckoutNow();
   };
+
+  // Keyboard shortcut listener for Checkout screen
+  useEffect(() => {
+    const handleTriggerCheckout = () => {
+      if (!completedSale) {
+        executeCheckoutNow();
+      }
+    };
+
+    const handleNewSaleEvent = () => {
+      setCompletedSale(null);
+      setDiscountAmount(0);
+      setCustomerName('');
+      setCustomerPhone('');
+      setOrderNotes('');
+      setAmountPaidInput('');
+    };
+
+    const handleCheckoutKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = target ? (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) : false;
+
+      // Tender number shortcuts 1-7 when not typing in text input
+      if (!isInput && !completedSale) {
+        if (e.key === '1' || (e.altKey && e.key === '1')) { e.preventDefault(); setPaymentMethod('CASH'); }
+        else if (e.key === '2' || (e.altKey && e.key === '2')) { e.preventDefault(); setPaymentMethod('CBE_YOHANNES'); }
+        else if (e.key === '3' || (e.altKey && e.key === '3')) { e.preventDefault(); setPaymentMethod('CBE_AZEB'); }
+        else if (e.key === '4' || (e.altKey && e.key === '4')) { e.preventDefault(); setPaymentMethod('AWASH'); }
+        else if (e.key === '5' || (e.altKey && e.key === '5')) { e.preventDefault(); setPaymentMethod('TELEBIRR'); }
+        else if (e.key === '6' || (e.altKey && e.key === '6')) { e.preventDefault(); setPaymentMethod('BOA'); }
+        else if (e.key === '7' || (e.altKey && e.key === '7')) { e.preventDefault(); setPaymentMethod('CREDIT'); }
+      }
+    };
+
+    window.addEventListener('sappy:trigger-checkout', handleTriggerCheckout);
+    window.addEventListener('sappy:start-new-sale', handleNewSaleEvent);
+    window.addEventListener('keydown', handleCheckoutKeyDown);
+
+    return () => {
+      window.removeEventListener('sappy:trigger-checkout', handleTriggerCheckout);
+      window.removeEventListener('sappy:start-new-sale', handleNewSaleEvent);
+      window.removeEventListener('keydown', handleCheckoutKeyDown);
+    };
+  }, [completedSale, executeCheckoutNow]);
 
   // Thermal Receipt Printing
   const handlePrintReceipt = () => {
@@ -231,12 +293,16 @@ export const CheckoutPage: React.FC = () => {
             <button
               onClick={() => {
                 setCompletedSale(null);
-                setActiveTab('pos');
+                startNewSale();
               }}
-              className="flex-1 sm:flex-none h-11 px-5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none h-11 px-5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              title="Start New Sale / Reset POS Register (F2 or Alt+N)"
             >
               <RotateCcw className="w-4 h-4" />
               <span>Start New Sale</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono bg-emerald-900 text-emerald-100 rounded border border-emerald-500/50">
+                F2
+              </kbd>
             </button>
             <button
               onClick={() => {
@@ -726,13 +792,24 @@ export const CheckoutPage: React.FC = () => {
                   <CreditCard className="w-4 h-4 text-emerald-700" />
                   <span>Select Payment Channel</span>
                 </label>
-                <span className="text-[10px] text-slate-500 font-semibold">
-                  6 Sappy Accounts
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline">
+                    Keys 1-7
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsShortcutsModalOpen(true)}
+                    className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
+                    title="View Cashier Shortcuts (F1)"
+                  >
+                    <Keyboard className="w-3 h-3 text-slate-500" />
+                    <span>F1</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {SAPPY_PAYMENT_METHODS.map((m) => {
+                {SAPPY_PAYMENT_METHODS.map((m, index) => {
                   const Icon = m.icon;
                   const isSelected = paymentMethod === m.id;
                   return (
@@ -745,12 +822,22 @@ export const CheckoutPage: React.FC = () => {
                           ? 'border-emerald-700 bg-emerald-700 text-white shadow-md ring-2 ring-emerald-500/30'
                           : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800'
                       }`}
+                      title={`Press '${index + 1}' or click to select ${m.label}`}
                     >
                       <div className="flex items-center justify-between w-full mb-1">
                         <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-100' : 'text-slate-600'}`} />
-                        {isSelected && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                        )}
+                        <div className="flex items-center gap-1">
+                          <kbd className={`px-1 py-0.2 text-[9px] font-mono font-bold rounded ${
+                            isSelected 
+                              ? 'bg-emerald-800 text-emerald-100 border border-emerald-600/60' 
+                              : 'bg-white text-slate-600 border border-slate-300'
+                          }`}>
+                            {index + 1}
+                          </kbd>
+                          {isSelected && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                          )}
+                        </div>
                       </div>
                       <div>
                         <div className="font-bold text-xs leading-tight">{m.label}</div>
@@ -877,9 +964,13 @@ export const CheckoutPage: React.FC = () => {
                 type="submit"
                 disabled={cart.length === 0 || isCashInsufficient}
                 className="w-full h-14 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-2xl text-base font-extrabold shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed active:scale-98"
+                title="Complete Transaction & Print Receipt (F4 or Ctrl+Enter)"
               >
                 <CheckCircle2 className="w-5 h-5 text-emerald-300" />
                 <span>Complete Sale &amp; Print ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
+                <kbd className="hidden sm:inline-block px-2 py-0.5 text-xs font-mono font-bold bg-emerald-900/90 text-emerald-100 rounded border border-emerald-500/50 shadow-xs">
+                  F4
+                </kbd>
               </button>
 
               {/* Split Tender Modal Button */}

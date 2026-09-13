@@ -16,6 +16,7 @@ export const INITIAL_SETTINGS: StoreSettings = {
   enableSoundEffects: true,
   enableHardwareScannerAutoSubmit: true,
   requirePinForSwitching: false,
+  themeMode: 'light',
 };
 
 export const INITIAL_ITEMS: InventoryItem[] = getFullStationeryCatalog();

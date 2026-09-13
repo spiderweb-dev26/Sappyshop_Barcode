@@ -311,6 +311,8 @@ export interface ActivityLog {
   metadata?: Record<string, unknown>;
 }
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface StoreSettings {
   storeName: string;
   storeAddress: string;
@@ -323,6 +325,7 @@ export interface StoreSettings {
   enableSoundEffects: boolean;
   enableHardwareScannerAutoSubmit: boolean;
   requirePinForSwitching?: boolean; // When false, staff and admins can switch profiles without entering a PIN
+  themeMode?: ThemeMode; // 'light' (default) or 'dark' (high-contrast for dim store environments)
 }
 
 export interface BarcodeLabelOption {
@@ -333,4 +336,13 @@ export interface BarcodeLabelOption {
   showBarcodeText: boolean;
   showCategory: boolean;
   barcodeType: 'CODE128' | 'EAN13' | 'UPC' | 'QR';
+}
+
+export interface KeyboardShortcutDef {
+  id: string;
+  keyLabel: string;
+  secondaryKey?: string;
+  action: string;
+  description: string;
+  category: 'SALE' | 'SCANNER' | 'NAVIGATION' | 'SYSTEM';
 }

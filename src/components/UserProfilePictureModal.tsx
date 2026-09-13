@@ -48,11 +48,35 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
 
   // Camera stream state
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
+  const [availableCameras, setAvailableCameras] = useState<{ id: string; label: string }[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Enumerate video devices and identify Camera 0
+  const enumerateUserCameras = async (): Promise<{ id: string; label: string }[]> => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(d => d.kind === 'videoinput');
+      if (videoInputs.length > 0) {
+        const list = videoInputs.map((d, index) => {
+          const raw = (d.label || '').trim();
+          return {
+            id: d.deviceId,
+            label: raw ? `Camera ${index} (${raw})` : `Camera ${index}`
+          };
+        });
+        setAvailableCameras(list);
+        return list;
+      }
+    } catch {
+      // Ignore enumeration failure
+    }
+    return [];
+  };
 
   // Sync state when user changes
   useEffect(() => {
@@ -128,30 +152,67 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
     }
   };
 
-  // Start Camera
-  const startCamera = async (facingMode: 'user' | 'environment' = cameraFacing) => {
+  // Start Camera - Defaults to Camera 0 (the first videoinput device) on all devices
+  const startCamera = async (targetDeviceId?: string) => {
     stopCamera();
     setCameraError(null);
     try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: 640 },
-          height: { ideal: 640 }
-        },
-        audio: false
+      let chosenDeviceId = targetDeviceId || selectedCameraId;
+
+      // Ensure we query available cameras to find Camera 0 if not already set
+      if (!chosenDeviceId && navigator.mediaDevices?.enumerateDevices) {
+        const cams = await enumerateUserCameras();
+        if (cams.length > 0) {
+          // Camera 0 is always the default on all devices
+          chosenDeviceId = cams[0].id;
+          setSelectedCameraId(cams[0].id);
+        }
+      }
+
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 640 },
+        height: { ideal: 640 }
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      if (chosenDeviceId) {
+        videoConstraints.deviceId = { exact: chosenDeviceId };
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraints,
+        audio: false
+      });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
       setIsCameraActive(true);
+
+      // Re-query cameras after permission is granted to get accurate human labels
+      const updatedCams = await enumerateUserCameras();
+      if (updatedCams.length > 0 && !chosenDeviceId) {
+        setSelectedCameraId(updatedCams[0].id);
+      }
     } catch (err) {
       console.error('Camera access error:', err);
-      setCameraError('Camera access unavailable. Please check browser permissions or upload an image file.');
-      setIsCameraActive(false);
+      // Fallback: try basic video constraint (Camera 0)
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 640 } },
+          audio: false
+        });
+        streamRef.current = fallbackStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+          videoRef.current.play();
+        }
+        setIsCameraActive(true);
+        await enumerateUserCameras();
+      } catch {
+        setCameraError('Camera access unavailable. Please check browser permissions or upload an image file.');
+        setIsCameraActive(false);
+      }
     }
   };
 
@@ -483,20 +544,48 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
                       <div className="w-44 h-44 rounded-full border-2 border-dashed border-emerald-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]" />
                     </div>
 
-                    {/* Camera Switch button for mobile */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
-                        setCameraFacing(nextFacing);
-                        startCamera(nextFacing);
-                      }}
-                      className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors z-10"
-                      title="Switch front/back camera"
-                    >
-                      <SwitchCamera className="w-4 h-4" />
-                    </button>
+                    {/* Camera Switch button for multi-camera devices */}
+                    {availableCameras.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentIndex = availableCameras.findIndex(c => c.id === selectedCameraId);
+                          const nextIndex = (currentIndex + 1) % availableCameras.length;
+                          const nextCam = availableCameras[nextIndex];
+                          setSelectedCameraId(nextCam.id);
+                          startCamera(nextCam.id);
+                        }}
+                        className="absolute top-2 right-2 px-2.5 py-1 bg-black/75 hover:bg-black/90 text-white rounded-lg transition-colors z-10 text-[11px] font-semibold flex items-center gap-1.5 shadow"
+                        title="Switch Camera (Default: Camera 0)"
+                      >
+                        <SwitchCamera className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{availableCameras.find(c => c.id === selectedCameraId)?.label.split(' ')[0] || 'Camera 0'}</span>
+                      </button>
+                    )}
                   </div>
+
+                  {/* Multi-camera selector dropdown */}
+                  {availableCameras.length > 1 && (
+                    <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+                      <Camera className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="text-slate-600 font-medium shrink-0">Device:</span>
+                      <select
+                        value={selectedCameraId}
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          setSelectedCameraId(newId);
+                          startCamera(newId);
+                        }}
+                        className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer max-w-[220px] truncate"
+                      >
+                        {availableCameras.map((c, idx) => (
+                          <option key={c.id} value={c.id}>
+                            {c.label} {idx === 0 ? '(Default)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <button

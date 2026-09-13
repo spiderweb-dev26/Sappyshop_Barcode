@@ -11,7 +11,10 @@ import {
   ArrowRight,
   LogOut,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Sun,
+  Moon,
+  Keyboard
 } from 'lucide-react';
 import { UserPinModal } from './UserPinModal';
 import { UserProfilePictureModal } from './UserProfilePictureModal';
@@ -39,7 +42,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     handleBarcodeScanned,
     logoutUser,
     cloudSyncStatus,
-    syncToCloudNow
+    syncToCloudNow,
+    themeMode,
+    toggleThemeMode,
+    setIsShortcutsModalOpen
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="bg-[#fdfbf7] text-slate-800 sticky top-0 z-40 border-b border-[#dfd7c7] shadow-2xs print:hidden">
+      <header className="bg-[#fdfbf7] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 sticky top-0 z-40 border-b border-[#dfd7c7] dark:border-slate-800 shadow-2xs print:hidden transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Left: Mobile Menu Trigger + Logo and Branding */}
@@ -223,6 +229,46 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* PWA Mobile & Desktop Install Button */}
             <PWAInstallButton variant="compact" />
+
+            {/* Global Theme Mode Toggle (Light Mode vs. High-Contrast Dark Mode for Dim Environments) */}
+            <button
+              type="button"
+              onClick={toggleThemeMode}
+              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-[#dfd7c7] dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs"
+              title={
+                themeMode === 'dark' 
+                  ? 'Active: High-Contrast Dark Mode (Dim Store Environments). Click to switch to Light Mode.' 
+                  : 'Active: Default Light Mode. Click to switch to High-Contrast Dark Mode for dim store lighting.'
+              }
+              aria-label="Toggle Theme Mode"
+            >
+              {themeMode === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                  <span className="hidden md:inline text-[11px] font-bold text-amber-300">Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-[#064e3b] dark:text-emerald-400 shrink-0" />
+                  <span className="hidden md:inline text-[11px] font-bold text-slate-800 dark:text-slate-200">Dark Mode</span>
+                </>
+              )}
+            </button>
+
+            {/* Desktop Cashier Keyboard Shortcuts Button */}
+            <button
+              type="button"
+              onClick={() => setIsShortcutsModalOpen(true)}
+              className="flex items-center gap-1.5 bg-[#f8f4ec] hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-[#dfd7c7] dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs"
+              title="Desktop Cashier Keyboard Shortcuts (Press F1 or ?)"
+              aria-label="Desktop Cashier Keyboard Shortcuts"
+            >
+              <Keyboard className="w-3.5 h-3.5 text-[#064e3b] dark:text-emerald-400 shrink-0" />
+              <span className="hidden xl:inline text-[11px] font-bold">Shortcuts</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono font-bold bg-[#e8e2d5] dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded border border-[#dfd7c7] dark:border-slate-600">
+                F1
+              </kbd>
+            </button>
 
             {/* Cloud Firestore Status & Quick Sync Pill */}
             <button

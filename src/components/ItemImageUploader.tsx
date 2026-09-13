@@ -243,7 +243,6 @@ export const ItemImageUploader: React.FC<ItemImageUploaderProps> = ({
                   ref={cameraInputRef}
                   type="file" 
                   accept="image/*" 
-                  capture="environment" 
                   className="hidden" 
                   onChange={handleFileChange}
                 />

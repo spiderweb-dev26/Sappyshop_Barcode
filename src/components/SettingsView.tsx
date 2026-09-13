@@ -21,7 +21,9 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { MASTER_PASSCODE } from '../types';
 
@@ -45,7 +47,10 @@ export const SettingsView: React.FC = () => {
     currentUser,
     updateUserPin,
     importDatabaseJson,
-    exportDatabaseJson
+    exportDatabaseJson,
+    themeMode,
+    toggleThemeMode,
+    setThemeMode
   } = useApp();
 
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
@@ -174,6 +179,110 @@ export const SettingsView: React.FC = () => {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Store Environment Lighting & Theme Mode (Default Light vs. High-Contrast Dark Mode) */}
+      <div className="bg-white p-4 rounded-lg border border-emerald-200 shadow-sm space-y-3 transition-colors">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-emerald-50 text-emerald-800 rounded-md">
+              {themeMode === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </div>
+            <div>
+              <h2 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
+                Store Lighting & Theme Display
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Optimize register visibility and reduce eye strain for bright store floors or dim ambient lighting environments.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider ${
+              themeMode === 'dark'
+                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+            }`}>
+              {themeMode === 'dark' ? 'DARK MODE (DIM STORE)' : 'LIGHT MODE (DEFAULT)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Theme Options Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Light Mode Option Card */}
+          <button
+            type="button"
+            onClick={() => setThemeMode('light')}
+            className={`p-3.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2.5 ${
+              themeMode === 'light'
+                ? 'bg-[#fdfbf7] border-[#064e3b] ring-2 ring-[#064e3b]/20 shadow-xs'
+                : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-amber-100 text-amber-800">
+                  <Sun className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800">Stationery Warm Light</h3>
+                  <span className="text-[10px] text-slate-500 font-medium">Standard Store Flooring</span>
+                </div>
+              </div>
+              {themeMode === 'light' && (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#064e3b] text-white">
+                  ACTIVE
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Warm cream (#f5f1e8) paper canvas paired with rich emerald accents and high-contrast dark typography. Perfect for daytime retail operations.
+            </p>
+            <div className="h-6 rounded bg-[#f5f1e8] border border-[#dfd7c7] flex items-center px-2 gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#064e3b]"></div>
+              <div className="w-8 h-2 rounded-sm bg-slate-400/40"></div>
+              <div className="w-12 h-2 rounded-sm bg-slate-300/40 ml-auto"></div>
+            </div>
+          </button>
+
+          {/* Dark Mode Option Card */}
+          <button
+            type="button"
+            onClick={() => setThemeMode('dark')}
+            className={`p-3.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2.5 ${
+              themeMode === 'dark'
+                ? 'bg-slate-900 border-emerald-500 ring-2 ring-emerald-500/30 shadow-xs text-white'
+                : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-slate-800 text-emerald-400 border border-slate-700">
+                  <Moon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800">High-Contrast Dark</h3>
+                  <span className="text-[10px] text-emerald-600 font-medium">Dim Store & Night Registers</span>
+                </div>
+              </div>
+              {themeMode === 'dark' && (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-600 text-white">
+                  ACTIVE
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Deep midnight obsidian background (#080c14) with crisp bright text and luminescent emerald borders. Eliminates terminal glare in dim back rooms and evening shifts.
+            </p>
+            <div className="h-6 rounded bg-[#080c14] border border-slate-700 flex items-center px-2 gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+              <div className="w-8 h-2 rounded-sm bg-slate-600"></div>
+              <div className="w-12 h-2 rounded-sm bg-slate-700 ml-auto"></div>
+            </div>
+          </button>
         </div>
       </div>
 

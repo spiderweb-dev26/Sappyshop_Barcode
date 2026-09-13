@@ -14,7 +14,10 @@ import {
   Settings,
   Lock,
   LogOut,
-  X
+  X,
+  Sun,
+  Moon,
+  Keyboard
 } from 'lucide-react';
 import { SappyLogoMark } from './SappyLogo';
 import { UserPinModal } from './UserPinModal';
@@ -39,7 +42,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     currentUser, 
     logoutUser,
     activeShift,
-    parkedOrders
+    parkedOrders,
+    themeMode,
+    toggleThemeMode,
+    setIsShortcutsModalOpen
   } = useApp();
 
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -263,6 +269,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <PWAInstallButton variant="banner" />
+
+        {/* Global Store Lighting Theme Toggle */}
+        <button
+          type="button"
+          onClick={toggleThemeMode}
+          className="w-full px-2.5 py-2 rounded-xl bg-[#043b2c] hover:bg-emerald-900/80 border border-emerald-800/80 flex items-center justify-between text-xs transition-colors cursor-pointer group"
+          title={themeMode === 'dark' ? 'Dark Mode Active: Click to switch to Light Mode' : 'Light Mode Active: Click to switch to High-Contrast Dark Mode (for dim store lighting)'}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {themeMode === 'dark' ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:rotate-45 transition-transform" />
+            ) : (
+              <Moon className="w-3.5 h-3.5 text-emerald-300 shrink-0 group-hover:-rotate-12 transition-transform" />
+            )}
+            <span className="text-[11px] font-medium text-emerald-100 truncate">
+              {themeMode === 'dark' ? 'Dim Store Dark Mode' : 'Stationery Light Mode'}
+            </span>
+          </div>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+            themeMode === 'dark' 
+              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' 
+              : 'bg-emerald-900/90 text-emerald-200 border border-emerald-700/50'
+          }`}>
+            {themeMode === 'dark' ? 'HIGH CONTRAST' : 'LIGHT'}
+          </span>
+        </button>
+
+        {/* Desktop Cashier Keyboard Shortcuts Cheat Sheet */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsShortcutsModalOpen(true);
+            if (onCloseMobile) onCloseMobile();
+          }}
+          className="w-full px-2.5 py-2 rounded-xl bg-[#043b2c] hover:bg-emerald-900/80 border border-emerald-800/80 flex items-center justify-between text-xs transition-colors cursor-pointer group"
+          title="Desktop Cashier Keyboard Shortcuts (F1 or ?)"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <Keyboard className="w-3.5 h-3.5 text-emerald-300 shrink-0 group-hover:scale-110 transition-transform" />
+            <span className="text-[11px] font-medium text-emerald-100 truncate">
+              Keyboard Shortcuts
+            </span>
+          </div>
+          <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-900/90 text-emerald-200 border border-emerald-700/50">
+            F1
+          </kbd>
+        </button>
+
         <div className="p-2 rounded-2xl bg-[#043b2c] border border-emerald-800/60 flex items-center justify-between gap-2">
           <button
             onClick={() => {

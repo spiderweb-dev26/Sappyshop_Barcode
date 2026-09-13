@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { InventoryItem, PaymentMethod, SaleRecord, getPaymentMethodLabel } from '../types';
 import { 
@@ -9,27 +9,29 @@ import {
   Minus, 
   CreditCard, 
   Banknote, 
-  Building,
-  Building2,
-  Landmark,
-  Smartphone,
+  Building, 
+  Building2, 
+  Landmark, 
+  Smartphone, 
   Scan, 
   Printer, 
   Download, 
   Share2, 
   X, 
   CheckCircle2, 
-  Receipt as ReceiptIcon,
-  Tag,
-  Sparkles,
-  Check,
-  ArrowRight,
-  Image as ImageIcon,
-  Package,
-  PauseCircle,
-  Split,
-  Calculator,
-  Percent
+  Receipt as ReceiptIcon, 
+  Tag, 
+  Sparkles, 
+  Check, 
+  ArrowRight, 
+  Image as ImageIcon, 
+  Package, 
+  PauseCircle, 
+  Split, 
+  Calculator, 
+  Percent,
+  RotateCcw,
+  Keyboard
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import jsPDF from 'jspdf';
@@ -70,8 +72,31 @@ export const POSRegister: React.FC = () => {
     parkedOrders,
     parkOrder,
     activeShift,
-    sales
+    sales,
+    startNewSale,
+    setIsShortcutsModalOpen
   } = useApp();
+
+  // Listen for global cashier shortcut triggers
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      barcodeInputRef.current?.focus();
+      barcodeInputRef.current?.select();
+    };
+
+    const handleNewSale = () => {
+      setCompletedSale(null);
+      setIsCheckoutOpen(false);
+      setSearch('');
+    };
+
+    window.addEventListener('sappy:focus-search', handleFocusSearch);
+    window.addEventListener('sappy:start-new-sale', handleNewSale);
+    return () => {
+      window.removeEventListener('sappy:focus-search', handleFocusSearch);
+      window.removeEventListener('sappy:start-new-sale', handleNewSale);
+    };
+  }, []);
 
   const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
   const [search, setSearch] = useState('');
@@ -267,14 +292,31 @@ export const POSRegister: React.FC = () => {
             {activeShift && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
           </button>
 
+          {/* Start New Sale Shortcut Button */}
+          <button
+            type="button"
+            onClick={startNewSale}
+            className="h-8 px-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Start New Sale / Reset Register (F2 or Alt+N)"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>New Sale</span>
+            <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded border border-slate-300 dark:border-slate-600">
+              F2
+            </kbd>
+          </button>
+
           {/* Parked / Held Tickets Button */}
           <button
             onClick={() => setIsParkedDrawerOpen(true)}
-            className="h-8 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-            title="View or recall parked customer tickets"
+            className="h-8 px-2.5 sm:px-3 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Hold / Park Active Cart (F8 or Alt+H)"
           >
-            <PauseCircle className="w-3.5 h-3.5 text-amber-700" />
+            <PauseCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
             <span>Hold Tickets</span>
+            <kbd className="hidden md:inline-block px-1.5 py-0.2 text-[9px] font-mono font-bold bg-amber-200/70 dark:bg-amber-900 text-amber-900 dark:text-amber-200 rounded border border-amber-300 dark:border-amber-700">
+              F8
+            </kbd>
             {parkedOrders.length > 0 && (
               <span className="px-1.5 py-0.2 bg-amber-600 text-white rounded-full text-[10px] font-black font-mono">
                 {parkedOrders.length}
@@ -285,10 +327,27 @@ export const POSRegister: React.FC = () => {
           {/* Camera Scanner Button */}
           <button
             onClick={() => setIsScannerModalOpen(true)}
-            className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Open / Close Barcode Scanner (F3 or Alt+S)"
           >
             <Scan className="w-3.5 h-3.5 text-emerald-200" />
-            <span>Open Camera Scanner</span>
+            <span>Open Scanner</span>
+            <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono font-bold bg-emerald-800 text-emerald-100 rounded border border-emerald-500/50">
+              F3
+            </kbd>
+          </button>
+
+          {/* Keyboard Shortcuts Helper Button */}
+          <button
+            type="button"
+            onClick={() => setIsShortcutsModalOpen(true)}
+            className="h-8 px-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+            title="Cashier Keyboard Shortcuts Cheat Sheet (Press F1 or ?)"
+          >
+            <Keyboard className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+              F1
+            </kbd>
           </button>
         </div>
       </div>
@@ -555,10 +614,13 @@ export const POSRegister: React.FC = () => {
                   type="button"
                   onClick={() => parkOrder()}
                   className="text-[11px] font-semibold text-amber-200 hover:text-amber-100 bg-amber-900/60 hover:bg-amber-900 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
-                  title="Hold/Park this cart to serve another customer"
+                  title="Hold/Park this cart to serve another customer (F8 or Alt+H)"
                 >
                   <PauseCircle className="w-3 h-3 text-amber-300" />
-                  <span>Hold Cart</span>
+                  <span>Hold</span>
+                  <kbd className="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-700/60">
+                    F8
+                  </kbd>
                 </button>
               )}
               {cart.length > 0 && (
@@ -566,9 +628,13 @@ export const POSRegister: React.FC = () => {
                   type="button"
                   onClick={clearCart}
                   className="text-[11px] font-semibold text-rose-200 hover:text-rose-100 bg-rose-950/60 hover:bg-rose-950 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Clear Cart and start new sale (F2 or Alt+N)"
                 >
                   <Trash2 className="w-3 h-3" />
                   <span>Clear</span>
+                  <kbd className="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-rose-900 text-rose-200 border border-rose-700/60">
+                    F2
+                  </kbd>
                 </button>
               )}
             </div>
@@ -688,9 +754,13 @@ export const POSRegister: React.FC = () => {
               disabled={cart.length === 0}
               onClick={handleOpenCheckout}
               className="w-full mt-2 py-3.5 bg-[#064e3b] hover:bg-[#043b2c] disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed active:scale-98"
+              title="Proceed to Full-Page Checkout (F4 or Ctrl+Enter)"
             >
               <CreditCard className="w-4 h-4 text-emerald-300" />
-              <span>Proceed to Full-Page Checkout ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
+              <span>Proceed to Checkout ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-emerald-900/90 text-emerald-200 border border-emerald-600/50 rounded shadow-2xs">
+                F4
+              </kbd>
               <ArrowRight className="w-4 h-4 text-emerald-300" />
             </button>
 

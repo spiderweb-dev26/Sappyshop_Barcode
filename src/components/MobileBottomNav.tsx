@@ -31,7 +31,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   return (
     <nav 
       aria-label="Mobile Navigation"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fdfbf7]/95 backdrop-blur-md border-t border-[#dfd7c7] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] flex items-center justify-around print:hidden select-none"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fdfbf7]/95 dark:bg-[#0f172a]/95 backdrop-blur-md border-t border-[#dfd7c7] dark:border-slate-800 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] flex items-center justify-around print:hidden select-none transition-colors duration-200"
     >
       {navItems.map(({ tab, label, icon: Icon }) => {
         const isActive = activeTab === tab || (tab === 'pos' && activeTab === 'checkout');
@@ -45,23 +45,23 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => setActiveTab(tab)}
             className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative min-h-[46px] ${
               isActive 
-                ? 'text-[#064e3b] font-bold' 
-                : 'text-slate-500 hover:text-slate-800'
+                ? 'text-[#064e3b] dark:text-emerald-400 font-bold' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <div className="relative flex items-center justify-center">
-              <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#064e3b]' : ''}`} />
+              <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#064e3b] dark:text-emerald-400' : ''}`} />
               {isPos && cartItemCount > 0 && (
                 <span className="absolute -top-1.5 -right-2.5 min-w-[1.15rem] h-[1.15rem] px-1 bg-rose-600 text-white rounded-full text-[9px] font-extrabold flex items-center justify-center shadow-xs">
                   {cartItemCount > 99 ? '99+' : cartItemCount}
                 </span>
               )}
             </div>
-            <span className={`text-[10px] tracking-tight mt-0.5 ${isActive ? 'font-bold text-[#064e3b]' : 'font-medium'}`}>
+            <span className={`text-[10px] tracking-tight mt-0.5 ${isActive ? 'font-bold text-[#064e3b] dark:text-emerald-400' : 'font-medium'}`}>
               {displayLabel}
             </span>
             {isActive && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#064e3b] mt-0.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#064e3b] dark:bg-emerald-400 mt-0.5" />
             )}
           </button>
         );
@@ -73,8 +73,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         onClick={onOpenMobileSidebar}
         className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all min-h-[46px] ${
           isMobileSidebarOpen 
-            ? 'text-[#064e3b] font-bold' 
-            : 'text-slate-500 hover:text-slate-800'
+            ? 'text-[#064e3b] dark:text-emerald-400 font-bold' 
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
         }`}
       >
         <Menu className="w-5 h-5" />

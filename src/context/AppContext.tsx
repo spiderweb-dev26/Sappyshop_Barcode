@@ -20,7 +20,8 @@ import {
   Supplier,
   RegisterShift,
   StocktakeItemSummary,
-  StocktakeSession
+  StocktakeSession,
+  ThemeMode
 } from '../types';
 import { 
   INITIAL_ITEMS, 
@@ -225,6 +226,18 @@ interface AppContextType {
   // Cloud Database (Firestore) Sync
   cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'error';
   syncToCloudNow: () => Promise<void>;
+
+  // Global Theme Mode (Default Light vs. High-Contrast Dark for Dim Store Environments)
+  themeMode: ThemeMode;
+  toggleThemeMode: () => void;
+  setThemeMode: (mode: ThemeMode) => void;
+
+  // Desktop Cashier Keyboard Shortcuts
+  isShortcutsModalOpen: boolean;
+  setIsShortcutsModalOpen: (open: boolean) => void;
+  startNewSale: () => void;
+  toggleScannerModal: () => void;
+  processCheckoutShortcut: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -412,6 +425,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  // Global Theme Mode State: Default Light vs. High-Contrast Dark Mode for Dim Store Environments
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    try {
+      const direct = localStorage.getItem('sappy_theme_mode');
+      if (direct === 'dark' || direct === 'light') return direct;
+      const savedSettings = localStorage.getItem(`${LOCAL_STORAGE_KEY}_settings`);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        if (parsed?.themeMode === 'dark' || parsed?.themeMode === 'light') {
+          return parsed.themeMode;
+        }
+      }
+    } catch { /* ignore */ }
+    return 'light';
+  });
+
+  // Synchronize document element class and color scheme with active themeMode
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themeMode === 'dark') {
+      root.classList.add('dark');
+      document.body.classList.add('dark');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.classList.remove('dark');
+      document.body.classList.remove('dark');
+      root.style.colorScheme = 'light';
+    }
+    try {
+      localStorage.setItem('sappy_theme_mode', themeMode);
+    } catch { /* ignore */ }
+  }, [themeMode]);
+
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -533,12 +579,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  const toggleThemeMode = useCallback(() => {
+    setThemeModeState(prev => {
+      const nextMode: ThemeMode = prev === 'dark' ? 'light' : 'dark';
+      addToast(
+        'info',
+        nextMode === 'dark' ? 'Dark Mode Activated' : 'Light Mode Activated',
+        nextMode === 'dark' 
+          ? 'Switched to high-contrast dark theme for dim store environments.'
+          : 'Switched to default warm stationery light theme.'
+      );
+      setSettings(currentSettings => {
+        const updated = { ...currentSettings, themeMode: nextMode };
+        syncSettingsToCloud(updated);
+        return updated;
+      });
+      return nextMode;
+    });
+  }, [addToast]);
+
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode);
+    setSettings(currentSettings => {
+      const updated = { ...currentSettings, themeMode: mode };
+      syncSettingsToCloud(updated);
+      return updated;
+    });
+  }, []);
+
   const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
   const [lastScannedItem, setLastScannedItem] = useState<{ item: InventoryItem; timestamp: number } | null>(null);
   const clearLastScannedItem = useCallback(() => {
     setLastScannedItem(null);
   }, []);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState<boolean>(false);
   const [pendingDuplicateScan, setPendingDuplicateScan] = useState<{ item: InventoryItem; currentQuantity: number } | null>(null);
   const [masterAuthRequest, setMasterAuthRequest] = useState<MasterAuthRequest | null>(null);
 
@@ -606,7 +681,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (cloudData.expenses && cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
           if (cloudData.movements && cloudData.movements.length > 0) setMovements(cloudData.movements);
           if (cloudData.logs && cloudData.logs.length > 0) setLogs(cloudData.logs);
-          if (cloudData.settings) setSettings(prev => ({ ...prev, ...cloudData.settings }));
+          if (cloudData.settings) {
+            setSettings(prev => ({ ...prev, ...cloudData.settings }));
+            if (cloudData.settings.themeMode) {
+              setThemeModeState(cloudData.settings.themeMode);
+            }
+          }
 
           if (isMounted) setCloudSyncStatus('synced');
           isInitialSyncDone.current = true;
@@ -2201,8 +2281,149 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [handleBarcodeScanned]);
 
+  // Desktop Cashier Shortcut Actions
+  const startNewSale = useCallback(() => {
+    setActiveTab('pos');
+    if (cart.length > 0) {
+      clearCart();
+      addToast('info', 'New Sale Started (F2)', 'Cart cleared and register reset for new customer.');
+    } else {
+      addToast('info', 'New Sale Ready (F2)', 'Register is ready. Scan barcode or search items.');
+    }
+    setIsScannerModalOpen(false);
+    setIsShortcutsModalOpen(false);
+    window.dispatchEvent(new CustomEvent('sappy:start-new-sale'));
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('sappy:focus-search'));
+    }, 60);
+  }, [cart.length, clearCart, addToast, setActiveTab]);
+
+  const toggleScannerModal = useCallback(() => {
+    setIsScannerModalOpen(prev => {
+      const next = !prev;
+      addToast(
+        'info', 
+        next ? 'Barcode Scanner Opened (F3)' : 'Scanner Closed',
+        next ? 'Position barcode in front of camera or use USB hardware scanner.' : undefined
+      );
+      return next;
+    });
+  }, [addToast]);
+
+  const processCheckoutShortcut = useCallback(() => {
+    if (activeTab === 'checkout') {
+      // If already on checkout screen, dispatch event to complete payment
+      window.dispatchEvent(new CustomEvent('sappy:trigger-checkout'));
+    } else {
+      // In POS or other views
+      if (cart.length === 0) {
+        addToast('warning', 'Cart Is Empty (F4)', 'Please scan or add items before checking out.');
+        if (activeTab !== 'pos') setActiveTab('pos');
+      } else {
+        setActiveTab('checkout');
+        addToast('info', 'Processing Checkout (F4)', 'Proceeding to checkout payment terminal.');
+      }
+    }
+  }, [activeTab, cart.length, setActiveTab, addToast]);
+
+  // Global Keyboard Shortcut Listener for Desktop Cashiers
+  useEffect(() => {
+    const handleCashierKeyboardShortcuts = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = target ? (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) : false;
+
+      // 1. HELP GUIDE: F1 or (Alt + /) or ('?' when not in input)
+      if (e.key === 'F1' || (e.altKey && e.key === '/') || (!isInput && e.key === '?')) {
+        e.preventDefault();
+        setIsShortcutsModalOpen(prev => !prev);
+        return;
+      }
+
+      // 2. START NEW SALE: F2 or (Alt + N) or (Ctrl+Shift+N / Cmd+Shift+N)
+      if (e.key === 'F2' || (e.altKey && e.key.toLowerCase() === 'n') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'n')) {
+        e.preventDefault();
+        startNewSale();
+        return;
+      }
+
+      // 3. OPEN / TOGGLE SCANNER: F3 or (Alt + S) or (Alt + B)
+      if (e.key === 'F3' || (e.altKey && e.key.toLowerCase() === 's') || (e.altKey && e.key.toLowerCase() === 'b')) {
+        e.preventDefault();
+        toggleScannerModal();
+        return;
+      }
+
+      // 4. PROCESS CHECKOUT: F4 or (Alt + C) or ((Ctrl+Enter or Cmd+Enter))
+      if (e.key === 'F4' || (e.altKey && e.key.toLowerCase() === 'c') || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+        e.preventDefault();
+        processCheckoutShortcut();
+        return;
+      }
+
+      // 5. HOLD / PARK CART: F8 or (Alt + H)
+      if (e.key === 'F8' || (e.altKey && e.key.toLowerCase() === 'h')) {
+        e.preventDefault();
+        if (cart.length > 0) {
+          parkOrder();
+          addToast('info', 'Cart Held (F8)', 'Saved current cart. Ready for next customer.');
+        } else {
+          addToast('warning', 'No Cart to Hold', 'Add items to cart before holding order.');
+        }
+        return;
+      }
+
+      // 6. FOCUS SEARCH BAR / QUICK ITEM LOOKUP: F9 or (Alt + F) or ('/' when not in input)
+      if (e.key === 'F9' || (e.altKey && e.key.toLowerCase() === 'f') || (!isInput && e.key === '/')) {
+        e.preventDefault();
+        setActiveTab('pos');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('sappy:focus-search'));
+        }, 50);
+        return;
+      }
+
+      // 7. TOGGLE STORE THEME (LIGHT / HIGH-CONTRAST DARK): Alt + T
+      if (e.altKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        toggleThemeMode();
+        return;
+      }
+
+      // 8. ESCAPE: Close shortcuts modal or scanner modal
+      if (e.key === 'Escape') {
+        if (isShortcutsModalOpen) {
+          e.preventDefault();
+          setIsShortcutsModalOpen(false);
+          return;
+        }
+        if (isScannerModalOpen) {
+          e.preventDefault();
+          setIsScannerModalOpen(false);
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleCashierKeyboardShortcuts);
+    return () => window.removeEventListener('keydown', handleCashierKeyboardShortcuts);
+  }, [
+    startNewSale,
+    toggleScannerModal,
+    processCheckoutShortcut,
+    parkOrder,
+    cart.length,
+    setActiveTab,
+    toggleThemeMode,
+    isShortcutsModalOpen,
+    isScannerModalOpen,
+    addToast
+  ]);
+
   // Settings
   const updateSettings = useCallback((newSettings: Partial<StoreSettings>) => {
+    if (newSettings.themeMode) {
+      setThemeModeState(newSettings.themeMode);
+    }
     setSettings(prev => {
       const updated = { ...prev, ...newSettings };
       syncSettingsToCloud(updated);
@@ -2516,7 +2737,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         exportDatabaseJson,
         importDatabaseJson,
         cloudSyncStatus,
-        syncToCloudNow
+        syncToCloudNow,
+        themeMode,
+        toggleThemeMode,
+        setThemeMode,
+        isShortcutsModalOpen,
+        setIsShortcutsModalOpen,
+        startNewSale,
+        toggleScannerModal,
+        processCheckoutShortcut
       }}
     >
       {children}

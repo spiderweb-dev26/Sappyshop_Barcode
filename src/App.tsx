@@ -12,6 +12,7 @@ import { POSRegister } from './components/POSRegister';
 import { CheckoutPage } from './components/CheckoutPage';
 import { AuthAnimationPage } from './components/AuthAnimationPage';
 import { DuplicateScanModal } from './components/DuplicateScanModal';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { MasterPasscodeModal } from './components/MasterPasscodeModal';
 import { ToastContainer } from './components/ToastContainer';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -126,7 +127,7 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] h-screen h-[100dvh] bg-[#f5f1e8] text-slate-800 flex flex-col font-sans antialiased selection:bg-[#064e3b] selection:text-white print:bg-white print:h-auto print:min-h-0 print:overflow-visible print:block">
+    <div className="min-h-screen min-h-[100dvh] h-screen h-[100dvh] bg-[#f5f1e8] dark:bg-[#080c14] text-slate-800 dark:text-slate-100 flex flex-col font-sans antialiased selection:bg-[#064e3b] selection:text-white print:bg-white print:h-auto print:min-h-0 print:overflow-visible print:block transition-colors duration-200">
       {/* Welcome Animation overlay on Login / Operator Switch */}
       {welcomeUser && (
         <WelcomeAnimation
@@ -150,7 +151,7 @@ const MainLayout: React.FC = () => {
         />
 
         {/* Dynamic Content Main Area */}
-        <main className="flex-1 overflow-y-auto min-h-0 w-full bg-[#f5f1e8] p-3 sm:p-5 lg:p-6 print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
+        <main className="flex-1 overflow-y-auto min-h-0 w-full bg-[#f5f1e8] dark:bg-[#080c14] p-3 sm:p-5 lg:p-6 print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
           <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0 pb-28 lg:pb-8">
             {renderActiveView()}
           </div>
@@ -172,6 +173,7 @@ const MainLayout: React.FC = () => {
           <BarcodeScannerModal />
         </Suspense>
         <DuplicateScanModal />
+        <KeyboardShortcutsModal />
         <MasterPasscodeModal />
         <ToastContainer />
       </div>

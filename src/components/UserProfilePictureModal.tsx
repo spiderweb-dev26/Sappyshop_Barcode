@@ -20,6 +20,7 @@ import {
   AvatarPreset, 
   compressAndResizeAvatar 
 } from '../utils/avatarUtils';
+import { prioritizeAndFormatCameras, FormattedCamera } from '../utils/cameraUtils';
 
 interface UserProfilePictureModalProps {
   isOpen: boolean;
@@ -48,29 +49,27 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
 
   // Camera stream state
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [availableCameras, setAvailableCameras] = useState<{ id: string; label: string }[]>([]);
+  const [availableCameras, setAvailableCameras] = useState<FormattedCamera[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Enumerate video devices and identify Camera 0
-  const enumerateUserCameras = async (): Promise<{ id: string; label: string }[]> => {
+  // Enumerate video devices and identify Camera 0 (facing Back)
+  const enumerateUserCameras = async (): Promise<FormattedCamera[]> => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoInputs = devices.filter(d => d.kind === 'videoinput');
       if (videoInputs.length > 0) {
-        const list = videoInputs.map((d, index) => {
-          const raw = (d.label || '').trim();
-          return {
-            id: d.deviceId,
-            label: raw ? `Camera ${index} (${raw})` : `Camera ${index}`
-          };
-        });
-        setAvailableCameras(list);
-        return list;
+        const rawList = videoInputs.map(d => ({
+          id: d.deviceId,
+          label: d.label || ''
+        }));
+        const formatted = prioritizeAndFormatCameras(rawList);
+        setAvailableCameras(formatted);
+        return formatted;
       }
     } catch {
       // Ignore enumeration failure
@@ -152,18 +151,18 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
     }
   };
 
-  // Start Camera - Defaults to Camera 0 (the first videoinput device) on all devices
+  // Start Camera - Defaults to Camera 0 (facing Back) on all devices
   const startCamera = async (targetDeviceId?: string) => {
     stopCamera();
     setCameraError(null);
     try {
       let chosenDeviceId = targetDeviceId || selectedCameraId;
 
-      // Ensure we query available cameras to find Camera 0 if not already set
+      // Ensure we query available cameras to find Camera 0 (facing Back) if not already set
       if (!chosenDeviceId && navigator.mediaDevices?.enumerateDevices) {
         const cams = await enumerateUserCameras();
         if (cams.length > 0) {
-          // Camera 0 is always the default on all devices
+          // Camera 0 (facing Back) is always the default on all devices
           chosenDeviceId = cams[0].id;
           setSelectedCameraId(cams[0].id);
         }
@@ -176,6 +175,8 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
 
       if (chosenDeviceId) {
         videoConstraints.deviceId = { exact: chosenDeviceId };
+      } else {
+        videoConstraints.facingMode = { ideal: 'environment' };
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -196,10 +197,10 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
       }
     } catch (err) {
       console.error('Camera access error:', err);
-      // Fallback: try basic video constraint (Camera 0)
+      // Fallback: try environment/back video constraint
       try {
         const fallbackStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 640 } },
+          video: { width: { ideal: 640 }, height: { ideal: 640 }, facingMode: { ideal: 'environment' } },
           audio: false
         });
         streamRef.current = fallbackStream;
@@ -556,10 +557,10 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
                           startCamera(nextCam.id);
                         }}
                         className="absolute top-2 right-2 px-2.5 py-1 bg-black/75 hover:bg-black/90 text-white rounded-lg transition-colors z-10 text-[11px] font-semibold flex items-center gap-1.5 shadow"
-                        title="Switch Camera (Default: Camera 0)"
+                        title="Switch Camera (Default: Camera 0 (facing Back))"
                       >
                         <SwitchCamera className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{availableCameras.find(c => c.id === selectedCameraId)?.label.split(' ')[0] || 'Camera 0'}</span>
+                        <span>{availableCameras.find(c => c.id === selectedCameraId)?.label || 'Camera 0 (facing Back)'}</span>
                       </button>
                     )}
                   </div>
@@ -577,6 +578,7 @@ export const UserProfilePictureModal: React.FC<UserProfilePictureModalProps> = (
                           startCamera(newId);
                         }}
                         className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer max-w-[220px] truncate"
+                        title="Camera device selector (Default: Camera 0 (facing Back))"
                       >
                         {availableCameras.map((c, idx) => (
                           <option key={c.id} value={c.id}>

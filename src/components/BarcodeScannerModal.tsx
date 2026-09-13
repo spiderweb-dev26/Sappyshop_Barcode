@@ -31,6 +31,7 @@ import { soundEffects } from '../utils/soundEffects';
 import { formatCurrency } from '../utils/currencyUtils';
 import { resolveScannedBarcodeOrQr } from '../utils/skuBarcodeUtils';
 import { getItemDisplayImage, getStationeryFallbackSvg } from '../utils/imageUtils';
+import { prioritizeAndFormatCameras, FormattedCamera } from '../utils/cameraUtils';
 import { QuickImageModal } from './QuickImageModal';
 import { InventoryItem } from '../types';
 
@@ -60,7 +61,7 @@ export const BarcodeScannerModal: React.FC = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [isCameraPaused, setIsCameraPaused] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
+  const [cameras, setCameras] = useState<FormattedCamera[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [activeScanMode, setActiveScanMode] = useState<'camera' | 'file'>('camera');
   const [scanBehavior, setScanBehavior] = useState<'single_review' | 'continuous_cooldown'>('single_review');
@@ -163,16 +164,10 @@ export const BarcodeScannerModal: React.FC = () => {
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
-          const deviceList = devices.map((d, index) => {
-            const rawLabel = (d.label || '').trim();
-            return { 
-              id: d.id, 
-              label: rawLabel ? `Camera ${index} (${rawLabel})` : `Camera ${index}`
-            };
-          });
+          const deviceList = prioritizeAndFormatCameras(devices);
           setCameras(deviceList);
-          // Set default camera on all devices to Camera 0 (devices[0])
-          const camera0 = devices[0];
+          // Set default camera on all devices to Camera 0 (facing Back)
+          const camera0 = deviceList[0];
           setSelectedCameraId(camera0.id);
         } else {
           setCameraError('No camera devices found on this system. You can still scan QR images or enter codes manually.');
@@ -301,7 +296,7 @@ export const BarcodeScannerModal: React.FC = () => {
     }
   };
 
-  const startCamera = async (cameraId: string) => {
+  const startCamera = async (cameraId?: string) => {
     try {
       setCameraError(null);
       if (html5QrCodeRef.current) {
@@ -344,8 +339,11 @@ export const BarcodeScannerModal: React.FC = () => {
         aspectRatio: 1.333333,
       };
 
+      // Determine target camera device - defaults to Camera 0 (facing Back)
+      const chosenCamera = cameraId || selectedCameraId || { facingMode: 'environment' };
+
       await html5QrCode.start(
-        cameraId,
+        chosenCamera,
         config,
         (decodedText) => {
           // Immediate Guard: Only scan one at a time when in single review mode
@@ -362,7 +360,50 @@ export const BarcodeScannerModal: React.FC = () => {
       setCameraActive(true);
       setIsCameraPaused(false);
       isLockedRef.current = false;
+
+      // Re-query cameras once permissions are granted so accurate hardware labels are populated
+      try {
+        const freshDevices = await Html5Qrcode.getCameras();
+        if (freshDevices && freshDevices.length > 0) {
+          const formatted = prioritizeAndFormatCameras(freshDevices);
+          setCameras(formatted);
+          if (!cameraId && formatted.length > 0) {
+            setSelectedCameraId(formatted[0].id);
+          }
+        }
+      } catch {
+        // Ignore re-enumeration failure
+      }
     } catch (err) {
+      // Robust Fallback: If specific cameraId failed on mobile, retry with facingMode environment (facing Back)
+      if (typeof cameraId === 'string' && html5QrCodeRef.current) {
+        try {
+          const fallbackConfig = {
+            fps: 15,
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+              const edgeSize = Math.max(200, Math.floor(minEdge * 0.82));
+              return { width: edgeSize, height: edgeSize };
+            },
+            aspectRatio: 1.333333,
+          };
+          await html5QrCodeRef.current.start(
+            { facingMode: 'environment' },
+            fallbackConfig,
+            (decodedText) => {
+              if (scanBehavior === 'single_review' && isLockedRef.current) return;
+              processScannedCode(decodedText);
+            },
+            () => {}
+          );
+          setCameraActive(true);
+          setIsCameraPaused(false);
+          isLockedRef.current = false;
+          return;
+        } catch {
+          // Continue to error handler below
+        }
+      }
       setCameraError(`Unable to start camera: ${(err as Error).message || err}`);
       setCameraActive(false);
       setIsCameraPaused(false);
@@ -585,7 +626,7 @@ export const BarcodeScannerModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Camera Lens Selector (Default: Camera 0) */}
+          {/* Quick Camera Lens Selector (Default: Camera 0 (facing Back)) */}
           {activeScanMode === 'camera' && cameras.length > 0 && (
             <div className="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-700/80">
               <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -596,8 +637,8 @@ export const BarcodeScannerModal: React.FC = () => {
                   setSelectedCameraId(newCamId);
                   startCamera(newCamId);
                 }}
-                className="bg-transparent text-slate-200 text-[11px] font-medium focus:outline-none cursor-pointer max-w-[150px] sm:max-w-[210px] truncate"
-                title="Camera device selector (Default: Camera 0)"
+                className="bg-transparent text-slate-200 text-[11px] font-medium focus:outline-none cursor-pointer max-w-[170px] sm:max-w-[240px] truncate"
+                title="Camera device selector (Default: Camera 0 (facing Back))"
               >
                 {cameras.map((c, idx) => (
                   <option key={c.id} value={c.id} className="bg-slate-900 text-slate-100">

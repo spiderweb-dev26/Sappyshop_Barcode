@@ -261,16 +261,16 @@ export const POSRegister: React.FC = () => {
   return (
     <div className="space-y-4 pb-8">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-lg border border-emerald-100 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-lg border border-emerald-100 dark:border-slate-800 shadow-sm transition-colors">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">
+            <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
               Point of Sale (POS) Checkout Register
             </h1>
           </div>
-          <p className="text-xs text-slate-500">
-            Cashier: <strong className="text-emerald-800 font-semibold">{currentUser.name}</strong> &bull; Hardware Barcode Scanner & Camera Live
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Cashier: <strong className="text-emerald-800 dark:text-emerald-400 font-semibold">{currentUser.name}</strong> &bull; Hardware Barcode Scanner & Camera Live
           </p>
         </div>
 
@@ -280,12 +280,12 @@ export const POSRegister: React.FC = () => {
             onClick={() => setIsShiftModalOpen(true)}
             className={`h-8 px-3 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
               activeShift
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700'
             }`}
             title="Register shift float tracking and End-of-Day cash reconciliation"
           >
-            <Calculator className={`w-3.5 h-3.5 ${activeShift ? 'text-emerald-700' : 'text-slate-500'}`} />
+            <Calculator className={`w-3.5 h-3.5 ${activeShift ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>
               {activeShift ? `Shift Active (${formatCurrency(activeShift.openingFloat, settings.currencySymbol)})` : 'Open Register Shift'}
             </span>
@@ -353,32 +353,32 @@ export const POSRegister: React.FC = () => {
       </div>
 
       {/* Mobile View Toggle: Catalog vs Cart */}
-      <div className="lg:hidden flex items-center bg-white p-1 rounded-xl border border-emerald-100 shadow-xs">
+      <div className="lg:hidden flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-emerald-100 dark:border-slate-800 shadow-xs">
         <button
           type="button"
           onClick={() => setMobileTab('catalog')}
-          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
             mobileTab === 'catalog'
               ? 'bg-[#064e3b] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
-          <Search className="w-3.5 h-3.5" />
+          <Search className="w-4 h-4" />
           <span>Catalog ({filteredItems.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setMobileTab('cart')}
-          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
             mobileTab === 'cart'
               ? 'bg-[#064e3b] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
-          <ShoppingCart className="w-3.5 h-3.5" />
+          <ShoppingCart className="w-4 h-4" />
           <span>Cart ({cart.reduce((acc, c) => acc + c.quantity, 0)})</span>
           {cart.length > 0 && (
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${mobileTab === 'cart' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-100 text-emerald-800'}`}>
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${mobileTab === 'cart' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'}`}>
               {formatCurrency(grandTotal, settings.currencySymbol)}
             </span>
           )}
@@ -464,20 +464,20 @@ export const POSRegister: React.FC = () => {
           <QuickKeysBar />
 
           {/* Search bar */}
-          <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-emerald-100 dark:border-slate-800 shadow-sm transition-colors">
             <form onSubmit={handleBarcodeSearchSubmit} className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 ref={barcodeInputRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Scan barcode, type SKU or product title to add directly..."
-                className="w-full h-10 sm:h-8 pl-9 pr-24 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-md text-[16px] sm:text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                className="w-full h-10 sm:h-9 pl-9 pr-24 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl sm:rounded-md text-[16px] sm:text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition-all"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 sm:h-6 px-3 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg sm:rounded text-xs sm:text-[11px] font-semibold"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 sm:h-7 px-3 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg sm:rounded text-xs sm:text-[11px] font-semibold transition-transform"
               >
                 Find & Add
               </button>
@@ -490,7 +490,7 @@ export const POSRegister: React.FC = () => {
                 className={`px-2.5 py-1 rounded text-xs font-medium shrink-0 transition-colors ${
                   selectedCat === 'ALL'
                     ? 'bg-emerald-800 text-white shadow-xs font-semibold'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                 }`}
               >
                 All Products ({items.length})
@@ -502,7 +502,7 @@ export const POSRegister: React.FC = () => {
                   className={`px-2.5 py-1 rounded text-xs font-medium shrink-0 transition-colors ${
                     selectedCat === cat
                       ? 'bg-emerald-800 text-white shadow-xs font-semibold'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {cat}
@@ -512,7 +512,7 @@ export const POSRegister: React.FC = () => {
           </div>
 
           {/* Product Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[580px] p-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto max-h-[640px] p-1">
             {filteredItems.map((item) => {
               const isOut = item.stock <= 0;
               const isLow = item.stock > 0 && item.stock <= item.minStockAlert;
@@ -524,12 +524,12 @@ export const POSRegister: React.FC = () => {
                   onClick={() => !isOut && addToCart(item, 1)}
                   className={`p-3 rounded-lg border transition-all flex flex-col justify-between text-left select-none relative group ${
                     isOut
-                      ? 'bg-slate-100/70 border-slate-200 opacity-60 cursor-not-allowed'
-                      : 'bg-white hover:bg-emerald-50/40 border-emerald-100 hover:border-emerald-400 shadow-xs cursor-pointer active:scale-98'
+                      ? 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed'
+                      : 'bg-white dark:bg-slate-900 hover:bg-emerald-50/40 dark:hover:bg-slate-800/80 border-emerald-100 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 shadow-xs cursor-pointer active:scale-98'
                   }`}
                 >
                   {/* Item Image / Visual Placeholder */}
-                  <div className="w-full h-24 mb-2 rounded-md bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center relative">
+                  <div className="w-full h-24 mb-2 rounded-md bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 overflow-hidden flex items-center justify-center relative">
                     <img
                       src={getItemDisplayImage(item)}
                       alt={item.name}
@@ -548,34 +548,34 @@ export const POSRegister: React.FC = () => {
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-mono text-slate-400 block uppercase">
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 block uppercase">
                       {item.sku}
                     </span>
-                    <h3 className="font-bold text-xs text-slate-800 line-clamp-2 mt-0.5 leading-snug">
+                    <h3 className="font-bold text-xs text-slate-800 dark:text-slate-100 line-clamp-2 mt-0.5 leading-snug">
                       {item.name}
                     </h3>
                     {item.nameAmharic && (
-                      <p className="text-[10px] text-emerald-800 font-medium truncate mt-0.5" title={item.nameAmharic}>
+                      <p className="text-[10px] text-emerald-800 dark:text-emerald-400 font-medium truncate mt-0.5" title={item.nameAmharic}>
                         {item.nameAmharic}
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1">
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-sm font-bold text-emerald-800 font-mono">
+                        <p className="text-sm font-bold text-emerald-800 dark:text-emerald-400 font-mono">
                           {formatCurrency(item.sellingPrice, settings.currencySymbol)}
                         </p>
-                        <span className="text-[10px] text-slate-400">/{item.unit}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">/{item.unit}</span>
                       </div>
 
                       <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                         isOut
-                          ? 'bg-rose-100 text-rose-800'
+                          ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
                           : isLow
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300'
+                          : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
                       }`}>
                         {item.stock} left
                       </span>
@@ -583,7 +583,7 @@ export const POSRegister: React.FC = () => {
 
                     {/* Wholesale pricing indicator if present */}
                     {item.wholesalePrice && item.wholesaleMinQty && (
-                      <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded">
+                      <div className="flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                         <Tag className="w-2.5 h-2.5" />
                         <span>Bulk: {formatCurrency(item.wholesalePrice, settings.currencySymbol)} ({item.wholesaleMinQty}+)</span>
                       </div>
@@ -596,14 +596,14 @@ export const POSRegister: React.FC = () => {
         </div>
 
         {/* Right Column: Active POS Cart (5 cols) */}
-        <div className={`lg:col-span-5 flex-col bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden ${mobileTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`lg:col-span-5 flex-col bg-white dark:bg-slate-900 rounded-2xl border border-emerald-100 dark:border-slate-800 shadow-sm overflow-hidden transition-colors ${mobileTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Cart Header */}
-          <div className="p-3.5 bg-[#064e3b] text-white flex items-center justify-between">
+          <div className="p-3.5 bg-[#064e3b] dark:bg-slate-800 text-white flex items-center justify-between border-b border-emerald-900/40 dark:border-slate-700">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-emerald-300" />
               <div>
                 <h2 className="font-bold text-xs uppercase tracking-wider">Active Order Cart</h2>
-                <p className="text-[11px] text-emerald-200">
+                <p className="text-[11px] text-emerald-200 dark:text-slate-400">
                   {cart.reduce((acc, c) => acc + c.quantity, 0)} Items Added
                 </p>
               </div>
@@ -641,19 +641,19 @@ export const POSRegister: React.FC = () => {
           </div>
 
           {/* Cart Items List */}
-          <div className="flex-1 p-3 overflow-y-auto max-h-[380px] divide-y divide-slate-100">
+          <div className="flex-1 p-3 overflow-y-auto max-h-[380px] divide-y divide-slate-100 dark:divide-slate-800">
             {cart.length === 0 ? (
-              <div className="py-16 text-center text-slate-400 space-y-2">
-                <ShoppingCart className="w-12 h-12 mx-auto text-slate-300" />
-                <p className="font-bold text-xs text-slate-600">Register Cart Is Empty</p>
-                <p className="text-[11px] max-w-xs mx-auto text-slate-400">
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500 space-y-2">
+                <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" />
+                <p className="font-bold text-xs text-slate-600 dark:text-slate-300">Register Cart Is Empty</p>
+                <p className="text-[11px] max-w-xs mx-auto text-slate-400 dark:text-slate-500">
                   Scan a barcode or click any product from the catalog on the left.
                 </p>
               </div>
             ) : (
               cart.map(({ item, quantity, unitPrice }) => (
                 <div key={item.id} className="py-2.5 flex items-center justify-between gap-2.5 text-xs">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 flex items-center justify-center">
                     <img
                       src={getItemDisplayImage(item)}
                       alt={item.name}
@@ -665,33 +665,33 @@ export const POSRegister: React.FC = () => {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-900 truncate">{item.name}</p>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{item.name}</p>
                     {item.nameAmharic && (
-                      <p className="text-[10px] text-emerald-800 font-medium truncate">{item.nameAmharic}</p>
+                      <p className="text-[10px] text-emerald-800 dark:text-emerald-400 font-medium truncate">{item.nameAmharic}</p>
                     )}
-                    <p className="text-[11px] text-slate-500 font-mono">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                       {formatCurrency(unitPrice, settings.currencySymbol)} &times; {quantity} {item.unit}
                     </p>
                   </div>
 
-                  {/* Quantity Stepper */}
+                  {/* Quantity Stepper with mobile touch targets */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => updateCartQuantity(item.id, quantity - 1)}
-                      className="w-9 h-9 sm:w-7 sm:h-7 rounded-xl sm:rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-90 text-slate-700 flex items-center justify-center font-bold touch-manipulation transition-transform"
+                      className="w-9 h-9 sm:w-7 sm:h-7 rounded-xl sm:rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold touch-manipulation transition-transform"
                       aria-label="Decrease quantity"
                     >
                       <Minus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
                     </button>
-                    <span className="w-7 text-center font-bold font-mono text-slate-900 text-xs sm:text-xs">
+                    <span className="w-7 text-center font-bold font-mono text-slate-900 dark:text-slate-100 text-xs sm:text-xs">
                       {quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => updateCartQuantity(item.id, quantity + 1)}
                       disabled={quantity >= item.stock}
-                      className="w-9 h-9 sm:w-7 sm:h-7 rounded-xl sm:rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-90 disabled:opacity-40 text-slate-700 flex items-center justify-center font-bold touch-manipulation transition-transform"
+                      className="w-9 h-9 sm:w-7 sm:h-7 rounded-xl sm:rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 disabled:opacity-40 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold touch-manipulation transition-transform"
                       aria-label="Increase quantity"
                     >
                       <Plus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
@@ -700,14 +700,14 @@ export const POSRegister: React.FC = () => {
 
                   {/* Line Total */}
                   <div className="text-right shrink-0 min-w-[60px]">
-                    <p className="font-mono font-bold text-slate-900">
+                    <p className="font-mono font-bold text-slate-900 dark:text-slate-100">
                       {formatCurrency(unitPrice * quantity, settings.currencySymbol)}
                     </p>
                   </div>
 
                   <button
                     onClick={() => removeFromCart(item.id)}
-                    className="text-slate-300 hover:text-rose-600 p-1"
+                    className="text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 p-1"
                     title="Remove"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -718,16 +718,16 @@ export const POSRegister: React.FC = () => {
           </div>
 
           {/* Cart Pricing Calculation & Checkout Button */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-600">
+          <div className="p-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
               <span>Subtotal</span>
-              <span className="font-mono font-semibold">{formatCurrency(subtotal, settings.currencySymbol)}</span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(subtotal, settings.currencySymbol)}</span>
             </div>
 
             {/* Discount line */}
-            <div className="flex items-center justify-between text-slate-600">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1">
-                <Tag className="w-3 h-3 text-emerald-600" /> Order Discount ({settings.currencySymbol})
+                <Tag className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Order Discount ({settings.currencySymbol})
               </span>
               <input
                 type="number"
@@ -737,14 +737,14 @@ export const POSRegister: React.FC = () => {
                 value={discountAmount || ''}
                 onChange={(e) => setDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
                 placeholder="0.00"
-                className="w-20 px-2 py-0.5 bg-white border border-slate-200 rounded text-right font-mono text-xs focus:outline-none focus:border-emerald-500"
+                className="w-20 px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-right font-mono text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             {/* Grand Total */}
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-base">
-              <span className="font-extrabold text-slate-900">Grand Total</span>
-              <span className="font-extrabold text-emerald-700 font-mono text-xl">
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-base">
+              <span className="font-extrabold text-slate-900 dark:text-slate-100">Grand Total</span>
+              <span className="font-extrabold text-emerald-700 dark:text-emerald-400 font-mono text-xl">
                 {formatCurrency(grandTotal, settings.currencySymbol)}
               </span>
             </div>
@@ -753,12 +753,12 @@ export const POSRegister: React.FC = () => {
             <button
               disabled={cart.length === 0}
               onClick={handleOpenCheckout}
-              className="w-full mt-2 py-3.5 bg-[#064e3b] hover:bg-[#043b2c] disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed active:scale-98"
+              className="w-full mt-2 py-3.5 bg-[#064e3b] hover:bg-[#043b2c] dark:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed active:scale-98"
               title="Proceed to Full-Page Checkout (F4 or Ctrl+Enter)"
             >
               <CreditCard className="w-4 h-4 text-emerald-300" />
               <span>Proceed to Checkout ({formatCurrency(grandTotal, settings.currencySymbol)})</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-emerald-900/90 text-emerald-200 border border-emerald-600/50 rounded shadow-2xs">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-emerald-900/90 dark:bg-emerald-950 text-emerald-200 border border-emerald-600/50 rounded shadow-2xs">
                 F4
               </kbd>
               <ArrowRight className="w-4 h-4 text-emerald-300" />
@@ -769,9 +769,9 @@ export const POSRegister: React.FC = () => {
               type="button"
               disabled={cart.length === 0}
               onClick={() => setIsSplitModalOpen(true)}
-              className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+              className="w-full py-2.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
             >
-              <Split className="w-3.5 h-3.5 text-emerald-700" />
+              <Split className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
               <span>Split Tender (Multi-Payment Methods)</span>
             </button>
           </div>
@@ -817,8 +817,8 @@ export const POSRegister: React.FC = () => {
       {/* ========================================================================= */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden text-slate-900">
-            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden text-slate-900 dark:text-slate-100 transition-colors">
+            <div className="p-4 bg-emerald-800 dark:bg-slate-850 text-white flex items-center justify-between border-b border-emerald-900/40 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-emerald-200" />
                 <h3 className="font-bold text-sm">Payment & Checkout Terminal</h3>
@@ -830,16 +830,16 @@ export const POSRegister: React.FC = () => {
 
             <form onSubmit={handleExecuteCheckout} className="p-6 space-y-4">
               {/* Grand Total Highlight */}
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                <p className="text-xs text-emerald-800 font-semibold uppercase tracking-wider">Amount Due</p>
-                <p className="text-3xl font-extrabold text-emerald-900 font-mono mt-0.5">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-center">
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold uppercase tracking-wider">Amount Due</p>
+                <p className="text-3xl font-extrabold text-emerald-900 dark:text-emerald-200 font-mono mt-0.5">
                   {formatCurrency(grandTotal, settings.currencySymbol)}
                 </p>
               </div>
 
               {/* Payment Method Selector (Strictly limited to 6 Sappy Stationary methods) */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-2">Select Payment Method</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-2">Select Payment Method</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {SAPPY_PAYMENT_METHODS.map((m) => {
                     const Icon = m.icon;
@@ -851,19 +851,19 @@ export const POSRegister: React.FC = () => {
                         onClick={() => setPaymentMethod(m.id)}
                         className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between relative ${
                           isSelected
-                            ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/20'
-                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                            ? 'border-emerald-600 bg-emerald-600 dark:bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-500/20'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750'
                         }`}
                       >
                         <div className="flex items-center justify-between w-full mb-1">
-                          <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-100' : 'text-slate-500'}`} />
+                          <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400'}`} />
                           {isSelected && (
                             <span className="w-2 h-2 rounded-full bg-emerald-200 animate-pulse" />
                           )}
                         </div>
                         <div>
                           <div className="font-bold text-xs leading-snug">{m.label}</div>
-                          <div className={`text-[10px] truncate ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                          <div className={`text-[10px] truncate ${isSelected ? 'text-emerald-100' : 'text-slate-400 dark:text-slate-400'}`}>
                             {m.subLabel}
                           </div>
                         </div>
@@ -875,11 +875,11 @@ export const POSRegister: React.FC = () => {
 
               {/* If Cash: Quick change & amount paid */}
               {paymentMethod === 'CASH' && (
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5 animate-in fade-in">
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5 animate-in fade-in">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-700">Tendered Cash Amount ({settings.currencySymbol})</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tendered Cash Amount ({settings.currencySymbol})</label>
                     {changeDue > 0 && (
-                      <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded">
                         Change Due: {formatCurrency(changeDue, settings.currencySymbol)}
                       </span>
                     )}
@@ -889,7 +889,7 @@ export const POSRegister: React.FC = () => {
                     step="0.01"
                     value={amountPaidInput}
                     onChange={(e) => setAmountPaidInput(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-base font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                     required
                     autoFocus
                   />
@@ -899,7 +899,7 @@ export const POSRegister: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setQuickCash(grandTotal)}
-                      className="px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 rounded-lg text-xs font-bold text-slate-700"
+                      className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200"
                     >
                       Exact ({formatCurrency(grandTotal, settings.currencySymbol)})
                     </button>
@@ -908,7 +908,7 @@ export const POSRegister: React.FC = () => {
                         key={amt}
                         type="button"
                         onClick={() => setQuickCash(amt)}
-                        className="px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 rounded-lg text-xs font-bold text-slate-700"
+                        className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200"
                       >
                         {formatCurrency(amt, settings.currencySymbol)}
                       </button>
@@ -919,21 +919,21 @@ export const POSRegister: React.FC = () => {
 
               {/* If Digital Payment Method */}
               {paymentMethod !== 'CASH' && (
-                <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80 flex items-center gap-2.5 text-xs text-emerald-900 animate-in fade-in">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/50 rounded-xl border border-emerald-200/80 dark:border-emerald-800/80 flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-200 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <div>
                     <span className="font-semibold block">Confirmed: {getPaymentMethodLabel(paymentMethod)}</span>
-                    <span className="text-[11px] text-emerald-700">Digital transfer verified. Ready to complete sale instantly.</span>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300">Digital transfer verified. Ready to complete sale instantly.</span>
                   </div>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsCheckoutOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
                 >
                   Back to Cart
                 </button>

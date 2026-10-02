@@ -6,12 +6,14 @@ interface PWAInstallButtonProps {
   className?: string;
   variant?: 'navbar' | 'banner' | 'compact' | 'sign' | 'menu-item';
   onActionComplete?: () => void;
+  tooltipPlacement?: 'auto' | 'top' | 'right';
 }
 
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ 
   className = '',
   variant = 'compact',
-  onActionComplete
+  onActionComplete,
+  tooltipPlacement = 'auto'
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
@@ -40,28 +42,35 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
 
   // Sign variant: A sleek, compact sign with a hover card explaining the app's purposes
   if (variant === 'sign') {
+    const positionClasses = tooltipPlacement === 'top'
+      ? 'bottom-full left-0 mb-2'
+      : tooltipPlacement === 'right'
+      ? 'left-full bottom-0 ml-3'
+      : 'bottom-full left-0 mb-2 lg:bottom-0 lg:left-full lg:ml-3';
+
     return (
       <>
         <div className={`relative group/appsign inline-flex ${className}`}>
           <button
             type="button"
             onClick={handleTriggerInstall}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-200 hover:text-white text-[11px] font-semibold transition-all duration-150 cursor-pointer shadow-xs group-hover/appsign:border-emerald-400 group-hover/appsign:shadow-emerald-900/40"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-200 hover:text-white text-[10.5px] font-semibold transition-all duration-150 cursor-pointer shadow-xs group-hover/appsign:border-emerald-300 group-hover/appsign:ring-1 group-hover/appsign:ring-emerald-400/40"
             aria-label="Download Sappy App Sign (Hover to view purpose)"
+            title="Download & Install App (Hover to view purpose)"
           >
             <span className="relative flex h-2 w-2">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isInstalled ? 'bg-emerald-400' : 'bg-amber-400'} opacity-75`}></span>
               <span className={`relative inline-flex rounded-full h-2 w-2 ${isInstalled ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
             </span>
-            <Download className="w-3.5 h-3.5 text-emerald-300" />
-            <span className="tracking-tight">Download App</span>
-            <span className="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-emerald-900 text-emerald-300 border border-emerald-700/60">
+            <Download className="w-3.5 h-3.5 text-emerald-300 group-hover/appsign:scale-110 transition-transform" />
+            <span className="tracking-tight whitespace-nowrap">Download App</span>
+            <span className="text-[8.5px] font-mono font-bold px-1 py-0.2 rounded bg-emerald-900/90 text-emerald-300 border border-emerald-700/60 uppercase">
               {isInstalled ? 'ACTIVE' : 'SIGN'}
             </span>
           </button>
 
           {/* Hover Explanation Sign Card (Pops up directly when hovering the sign) */}
-          <div className="absolute bottom-full left-0 mb-2 w-72 p-3.5 bg-slate-900/95 text-slate-100 rounded-2xl shadow-2xl border border-emerald-500/50 backdrop-blur-md text-xs opacity-0 invisible group-hover/appsign:opacity-100 group-hover/appsign:visible transition-all duration-200 z-50 pointer-events-none transform -translate-y-1 group-hover/appsign:translate-y-0">
+          <div className={`absolute ${positionClasses} w-72 sm:w-80 p-3.5 bg-slate-900/95 text-slate-100 rounded-2xl shadow-2xl border border-emerald-500/50 backdrop-blur-md text-xs opacity-0 invisible group-hover/appsign:opacity-100 group-hover/appsign:visible transition-all duration-200 z-50 pointer-events-auto transform -translate-y-0.5 group-hover/appsign:translate-y-0`}>
             {/* Sign Header */}
             <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-800">
               <div className="flex items-center gap-2">
@@ -70,7 +79,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-xs text-white leading-tight">Sappy POS Application</h4>
-                  <p className="text-[10px] text-emerald-300/90 font-medium">Why install on this system?</p>
+                  <p className="text-[10px] text-emerald-300/90 font-medium">Why install this app?</p>
                 </div>
               </div>
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
@@ -85,7 +94,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   ✓
                 </div>
                 <div>
-                  <strong className="text-white font-semibold">Offline Cashier Protection:</strong> Register stays operational even if the store internet goes down.
+                  <strong className="text-white font-semibold">100% Offline Protection:</strong> Register stays operational and records sales even if store internet drops.
                 </div>
               </div>
 
@@ -94,7 +103,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   ✓
                 </div>
                 <div>
-                  <strong className="text-white font-semibold">Dedicated Workspace:</strong> Runs in fullscreen kiosk mode without browser address bars or tab distractions.
+                  <strong className="text-white font-semibold">Dedicated Workspace:</strong> Runs in fullscreen kiosk mode without browser address bars, tabs, or accidental closures.
                 </div>
               </div>
 
@@ -103,7 +112,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   ✓
                 </div>
                 <div>
-                  <strong className="text-white font-semibold">1-Click Desktop Launch:</strong> Pin directly to Windows Taskbar, Mac Dock, Android, or iOS homescreen.
+                  <strong className="text-white font-semibold">1-Click Fast Launch:</strong> Pin directly to Windows Taskbar, Mac Dock, or Phone Home Screen.
                 </div>
               </div>
 
@@ -112,14 +121,14 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   ✓
                 </div>
                 <div>
-                  <strong className="text-white font-semibold">Hardware Acceleration:</strong> Faster barcode scanner camera and receipt thermal printer response.
+                  <strong className="text-white font-semibold">Hardware Acceleration:</strong> Faster barcode scanner camera startup and receipt thermal printer response.
                 </div>
               </div>
             </div>
 
             {/* Bottom Sign Tip */}
             <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-emerald-400 font-semibold">
-              <span>{isInstalled ? 'App is installed & ready' : 'Click sign to install or see setup'}</span>
+              <span>{isInstalled ? 'App is installed & ready' : 'Click this sign to install'}</span>
               <ArrowRight className="w-3 h-3" />
             </div>
           </div>

@@ -215,7 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Right: Actions, POS Cart, Approvals, Profile, and More (3 dashes) Bar */}
+          {/* Right: Actions, POS Cart, Compact Avatar, and More (3 dashes) Bar */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Mobile Search Toggle */}
             <button
@@ -227,23 +227,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="w-4 h-4" />
             </button>
 
-            {/* Quick Mobile Barcode Scan Button */}
-            <button
-              type="button"
-              onClick={() => setIsScannerModalOpen(true)}
-              className="md:hidden p-2 rounded-full bg-[#f8f4ec] hover:bg-emerald-50 text-[#064e3b] border border-[#dfd7c7] transition-colors cursor-pointer"
-              aria-label="Scan barcode"
-            >
-              <Camera className="w-4 h-4" />
-            </button>
-
             {/* Quick POS Cart Pill */}
             <button
               onClick={() => setActiveTab('pos')}
-              className="relative p-2 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] border border-emerald-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="relative p-2 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-[#064e3b] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               aria-label="View Cart"
             >
-              <ShoppingBag className="w-4 h-4 text-[#064e3b]" />
+              <ShoppingBag className="w-4 h-4 text-[#064e3b] dark:text-emerald-400" />
               <span className="hidden sm:inline text-xs font-bold">POS</span>
               {cartItemCount > 0 && (
                 <span className="min-w-[1.25rem] h-5 px-1 bg-rose-500 text-white rounded-full text-[10px] font-extrabold flex items-center justify-center animate-pulse">
@@ -252,63 +242,35 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* Pending Approvals Alert for Admin (Only shown if pending review) */}
-            {currentUser?.role === 'ADMIN' && (users || []).some(u => u?.approvalStatus === 'PENDING') && (
-              <button
-                onClick={() => setActiveTab('users')}
-                className="relative p-2 sm:px-2.5 sm:py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/70 transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Staff account approvals pending review"
-              >
-                <UserCheck className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                <span className="hidden sm:inline text-xs font-bold">Approvals</span>
-                <span className="min-w-[1.25rem] h-5 px-1 bg-amber-600 text-white rounded-full text-[10px] font-extrabold flex items-center justify-center animate-pulse">
-                  {(users || []).filter(u => u?.approvalStatus === 'PENDING').length}
-                </span>
-              </button>
-            )}
-
-            {/* User Switch Badge & Profile Photo */}
-            <div className="flex items-center rounded-full bg-[#f8f4ec] dark:bg-slate-800 border border-[#dfd7c7] dark:border-slate-700 p-1 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setIsProfilePicModalOpen(true)}
-                className={`relative group/navavatar w-7 h-7 sm:w-8 sm:h-8 rounded-full ${currentUser?.avatarColor || 'bg-[#064e3b]'} text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-2xs cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all shrink-0`}
-                title="Click to update your profile photo"
-              >
-                {currentUser?.avatar ? (
-                  <img
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <span>{currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}</span>
-                )}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/navavatar:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera className="w-3.5 h-3.5 text-white" />
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsPinModalOpen(true)}
-                className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-0.5 text-left rounded-full hover:bg-[#eee7db] dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                title="Switch user account"
-              >
-                <div className="text-left hidden md:block">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block leading-tight truncate max-w-[100px]">{currentUser?.name || 'User'}</span>
-                  <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono uppercase">{currentUser?.role || 'STAFF'}</span>
-                </div>
-              </button>
-            </div>
+            {/* Compact User Avatar Button */}
+            <button
+              type="button"
+              onClick={() => setIsPinModalOpen(true)}
+              className={`relative group/navavatar w-8 h-8 rounded-full ${currentUser?.avatarColor || 'bg-[#064e3b]'} text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-2xs cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all shrink-0 border border-emerald-600/40`}
+              title={`${currentUser?.name || 'Staff User'} (${currentUser?.role || 'STAFF'}) - Click to switch profile`}
+              aria-label="Switch User Profile"
+            >
+              {currentUser?.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span>{currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}</span>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/navavatar:opacity-100 flex items-center justify-center transition-opacity">
+                <span className="text-[8px] font-bold">PIN</span>
+              </div>
+            </button>
 
             {/* More Bar (3 Dashes Menu) */}
             <div className="relative" ref={moreMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border transition-all duration-150 cursor-pointer shadow-2xs ${
+                className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border transition-all duration-150 cursor-pointer shadow-2xs ${
                   isMoreMenuOpen
                     ? 'bg-[#064e3b] text-white border-[#064e3b] dark:bg-emerald-700 dark:border-emerald-600 ring-2 ring-emerald-500/30'
                     : 'bg-[#f8f4ec] hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border-[#dfd7c7] dark:border-slate-700'
@@ -324,25 +286,101 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className={`w-3.5 h-[2px] rounded-full transition-colors ${isMoreMenuOpen ? 'bg-white' : 'bg-slate-700 dark:bg-slate-200'}`}></span>
                 </div>
                 <span className="text-xs font-bold hidden sm:inline">More</span>
+
+                {/* Notification indicator dot if pending approvals or sync attention needed */}
+                {currentUser?.role === 'ADMIN' && (users || []).some(u => u?.approvalStatus === 'PENDING') && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 text-[8px] font-bold text-white items-center justify-center">
+                      {(users || []).filter(u => u?.approvalStatus === 'PENDING').length}
+                    </span>
+                  </span>
+                )}
               </button>
 
               {/* More Dropdown Panel */}
               {isMoreMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#fdfbf7] dark:bg-slate-900 rounded-2xl shadow-2xl border border-[#dfd7c7] dark:border-slate-700 p-2.5 z-50 text-slate-800 dark:text-slate-100 animate-in fade-in-50 zoom-in-95 duration-150">
-                  {/* Dropdown Header */}
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#dfd7c7] dark:border-slate-800 px-1">
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex flex-col gap-[2px] justify-center items-center w-3 h-3">
-                        <span className="w-3 h-[2px] bg-[#064e3b] dark:bg-emerald-400 rounded-full"></span>
-                        <span className="w-3 h-[2px] bg-[#064e3b] dark:bg-emerald-400 rounded-full"></span>
-                        <span className="w-3 h-[2px] bg-[#064e3b] dark:bg-emerald-400 rounded-full"></span>
+                  {/* Dropdown Header: Current User Card */}
+                  <div className="p-2.5 rounded-xl bg-[#f8f4ec] dark:bg-slate-800/80 border border-[#dfd7c7] dark:border-slate-700/80 mb-2">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className={`w-9 h-9 rounded-full ${currentUser?.avatarColor || 'bg-[#064e3b]'} text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-xs shrink-0 border border-emerald-500/40`}>
+                        {currentUser?.avatar ? (
+                          <img
+                            src={currentUser.avatar}
+                            alt={currentUser.name}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span>{currentUser?.name ? currentUser.name.slice(0, 1).toUpperCase() : 'U'}</span>
+                        )}
                       </div>
-                      <span className="font-bold text-xs text-slate-900 dark:text-slate-100">System &amp; Store Controls</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">{currentUser?.name || 'Staff User'}</p>
+                          <span className="text-[8.5px] font-mono font-bold bg-emerald-800 text-emerald-100 px-1.5 py-0.2 rounded uppercase">
+                            {currentUser?.role || 'STAFF'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate font-mono">
+                          {currentUser?.email || 'staff@sappy.local'}
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-[9px] font-mono font-bold bg-[#e8e2d5] dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-[#dfd7c7] dark:border-slate-700">
-                      FY 2026
-                    </span>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#dfd7c7]/80 dark:border-slate-700/60">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMoreMenuOpen(false);
+                          setIsPinModalOpen(true);
+                        }}
+                        className="px-2 py-1 bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-600 border border-[#dfd7c7] dark:border-slate-600 rounded-lg text-[10.5px] font-bold text-slate-800 dark:text-slate-100 transition-colors cursor-pointer text-center"
+                      >
+                        Switch Account
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMoreMenuOpen(false);
+                          setIsProfilePicModalOpen(true);
+                        }}
+                        className="px-2 py-1 bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-600 border border-[#dfd7c7] dark:border-slate-600 rounded-lg text-[10.5px] font-bold text-slate-800 dark:text-slate-100 transition-colors cursor-pointer text-center flex items-center justify-center gap-1"
+                      >
+                        <Camera className="w-3 h-3 text-[#064e3b] dark:text-emerald-400" />
+                        <span>Edit Photo</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Pending Staff Approvals Alert for Admin (Moved to More menu) */}
+                  {currentUser?.role === 'ADMIN' && (users || []).some(u => u?.approvalStatus === 'PENDING') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setActiveTab('users');
+                      }}
+                      className="w-full p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border border-amber-300 dark:border-amber-700 transition-colors flex items-center justify-between text-left cursor-pointer mb-2 animate-pulse"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 flex items-center justify-center shrink-0">
+                          <UserCheck className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-amber-900 dark:text-amber-100">Pending Staff Approvals</p>
+                            <span className="min-w-[1.2rem] h-4 px-1 bg-amber-600 text-white rounded-full text-[9px] font-extrabold flex items-center justify-center">
+                              {(users || []).filter(u => u?.approvalStatus === 'PENDING').length}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80 truncate">New staff registrations awaiting review</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 shrink-0" />
+                    </button>
+                  )}
 
                   {/* Cloud Firestore Status Card & Quick Sync */}
                   <div className="p-2 rounded-xl bg-[#f8f4ec] dark:bg-slate-800/80 border border-[#dfd7c7] dark:border-slate-700/80 mb-1.5">

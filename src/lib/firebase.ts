@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 import { defaultFirebaseConfig } from './firebaseConfig';
 
@@ -26,9 +26,22 @@ let authInstance: Auth | null = null;
 
 try {
   appInstance = getApps().length === 0 ? initializeApp(config) : getApp();
-  dbInstance = config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
-    ? getFirestore(appInstance, config.firestoreDatabaseId)
-    : getFirestore(appInstance);
+  
+  const targetDbId = config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
+    ? config.firestoreDatabaseId
+    : undefined;
+
+  try {
+    dbInstance = initializeFirestore(appInstance, {
+      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
+    }, targetDbId);
+  } catch {
+    dbInstance = targetDbId
+      ? getFirestore(appInstance, targetDbId)
+      : getFirestore(appInstance);
+  }
+
   authInstance = getAuth(appInstance);
 } catch (err) {
   console.warn('Firebase initialization error:', err);

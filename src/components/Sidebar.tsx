@@ -151,22 +151,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarContent = (
-    <aside className="w-64 lg:w-56 bg-[#064e3b] text-white flex flex-col shrink-0 select-none h-full max-h-full p-2.5 sm:p-3 justify-between border-r border-[#043b2c] shadow-xl lg:shadow-none overflow-hidden">
+    <aside className="w-60 lg:w-56 bg-[#064e3b] text-white flex flex-col shrink-0 select-none h-full max-h-full p-2 sm:p-2.5 justify-between border-r border-[#043b2c] shadow-xl lg:shadow-none overflow-visible relative">
       {/* Top Section: Logo Emblem & Access Scope */}
       <div className="shrink-0">
-        <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-800/60">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-1.5 bg-emerald-900/90 rounded-xl border border-emerald-600/50 shadow-inner shrink-0">
-              <SappyLogoMark size={26} color="#6ee7b7" />
+        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-emerald-800/60">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-1 bg-emerald-900/90 rounded-lg border border-emerald-600/50 shadow-inner shrink-0">
+              <SappyLogoMark size={24} color="#6ee7b7" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="font-extrabold text-xs text-white tracking-wider">SAPPY</p>
-                <span className="text-[8px] font-mono font-bold bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-600/40 uppercase">
+                <span className="text-[8px] font-mono font-bold bg-emerald-800 text-emerald-200 px-1 py-0.2 rounded border border-emerald-600/40 uppercase">
                   {currentUser.role}
                 </span>
               </div>
-              <p className="text-[9px] text-emerald-200/80 font-serif italic truncate">stationery &amp; printing.</p>
+              <p className="text-[8.5px] text-emerald-200/80 font-serif italic truncate">stationery &amp; printing.</p>
             </div>
           </div>
 
@@ -182,8 +182,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Navigation List - Scrollable if screen height is constrained, fits screen on standard laptops/PCs */}
-      <nav className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-0.5 sm:space-y-1 scrollbar-thin">
+      {/* Navigation List - Fits screen vertically on standard displays, smooth scrolling if viewport is constrained */}
+      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-0.5 space-y-0.5 scrollbar-thin">
         {navItems.map((item) => {
           const isAllowed = item.allowedRoles.includes(currentUser.role);
           const isActive = activeTab === item.id || (item.id === 'pos' && activeTab === 'checkout');
@@ -193,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div
                 key={item.id}
-                className="flex items-center justify-between px-2.5 py-1.5 text-emerald-300/30 text-xs font-medium cursor-not-allowed rounded-lg"
+                className="flex items-center justify-between px-2.5 py-1 text-emerald-300/30 text-xs font-medium cursor-not-allowed rounded-lg"
                 title={`Requires ${item.allowedRoles.join(' or ')} role`}
               >
                 <div className="flex items-center gap-2">
@@ -209,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => handleSelectNav(item.id)}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium transition-all duration-150 rounded-lg cursor-pointer ${
+              className={`w-full flex items-center justify-between px-2.5 py-1 text-xs font-medium transition-all duration-150 rounded-lg cursor-pointer ${
                 isActive
                   ? 'bg-[#fdfbf7] text-[#064e3b] font-bold shadow-sm'
                   : 'text-emerald-100/85 hover:text-white hover:bg-emerald-900/60'
@@ -231,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Bottom Section: Shift Status, Download App Sign, Tools, & User Card */}
-      <div className="mt-2 pt-2 border-t border-emerald-800/80 space-y-1.5 shrink-0">
+      <div className="mt-1.5 pt-1.5 border-t border-emerald-800/80 space-y-1 shrink-0">
         {/* Register Shift Status Indicator */}
         {activeShift ? (
           <div 
@@ -239,14 +239,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('pos');
               if (onCloseMobile) onCloseMobile();
             }}
-            className="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-between text-[11px] cursor-pointer hover:bg-emerald-950 transition-colors"
+            className="px-2 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-between text-[10.5px] cursor-pointer hover:bg-emerald-950 transition-colors"
             title="Active Register Shift - Click to view in POS"
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="text-emerald-200 text-[10px] font-medium truncate">Shift #{activeShift.shiftNumber} Active</span>
+              <span className="text-emerald-200 text-[9.5px] font-medium truncate">Shift #{activeShift.shiftNumber} Active</span>
             </div>
-            <span className="text-[9px] text-emerald-400 font-mono font-bold shrink-0">OPEN</span>
+            <span className="text-[8.5px] text-emerald-400 font-mono font-bold shrink-0">OPEN</span>
           </div>
         ) : (
           <div 
@@ -254,21 +254,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('pos');
               if (onCloseMobile) onCloseMobile();
             }}
-            className="px-2.5 py-1 rounded-lg bg-slate-900/60 border border-slate-700/50 flex items-center justify-between text-[11px] cursor-pointer hover:bg-slate-900 transition-colors"
+            className="px-2 py-0.5 rounded-lg bg-slate-900/60 border border-slate-700/50 flex items-center justify-between text-[10.5px] cursor-pointer hover:bg-slate-900 transition-colors"
             title="Register is closed - Click to open shift in POS"
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-              <span className="text-slate-300 text-[10px] font-medium truncate">Register Closed</span>
+              <span className="text-slate-300 text-[9.5px] font-medium truncate">Register Closed</span>
             </div>
-            <span className="text-[9px] text-amber-300 font-bold hover:underline shrink-0">Open Shift</span>
+            <span className="text-[8.5px] text-amber-300 font-bold hover:underline shrink-0">Open Shift</span>
           </div>
         )}
 
         {/* Utility row: Download App Sign (hover explains purpose) + Theme + Shortcuts */}
         <div className="flex items-center justify-between gap-1 pt-0.5">
           {/* Download App Sign with hover explanation tooltip card */}
-          <PWAInstallButton variant="sign" />
+          <PWAInstallButton variant="sign" tooltipPlacement="auto" />
 
           <div className="flex items-center gap-1">
             {/* Theme Mode Toggle Button */}
@@ -303,16 +303,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* User Profile Card & Quick Logout */}
-        <div className="p-1.5 rounded-xl bg-[#043b2c] border border-emerald-800/70 flex items-center justify-between gap-2">
+        <div className="p-1.5 rounded-xl bg-[#043b2c] border border-emerald-800/70 flex items-center justify-between gap-1.5">
           <button
             onClick={() => {
               setIsPinModalOpen(true);
               if (onCloseMobile) onCloseMobile();
             }}
-            className="flex items-center gap-2 min-w-0 flex-1 text-left group hover:opacity-90 transition-opacity cursor-pointer"
+            className="flex items-center gap-1.5 min-w-0 flex-1 text-left group hover:opacity-90 transition-opacity cursor-pointer"
             title="Switch User Profile"
           >
-            <div className={`w-7 h-7 rounded-full ${currentUser?.avatarColor || 'bg-emerald-700'} border border-emerald-500/50 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs overflow-hidden`}>
+            <div className={`w-6 h-6 rounded-full ${currentUser?.avatarColor || 'bg-emerald-700'} border border-emerald-500/50 flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-xs overflow-hidden`}>
               {currentUser?.avatar ? (
                 <img 
                   src={currentUser.avatar} 
@@ -328,7 +328,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <p className="text-xs font-bold text-emerald-50 truncate leading-tight group-hover:text-emerald-200 transition-colors">
                 {currentUser?.name || 'Staff User'}
               </p>
-              <span className="text-[9px] text-emerald-300/80 font-mono uppercase">
+              <span className="text-[8.5px] text-emerald-300/80 font-mono uppercase">
                 {currentUser?.role || 'STAFF'}
               </span>
             </div>
